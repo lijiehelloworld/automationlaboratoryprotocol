@@ -1,0 +1,23 @@
+---
+title: "快速开始：发布服务"
+description: "准备并发布 ALP 服务元数据"
+---
+
+# 快速开始：发布服务
+
+<Steps>
+  <Step title="准备服务">
+    确保 ALP Server 的发现接口和 Manifest 可以从声明的连接地址访问。
+  </Step>
+  <Step title="编写元数据">
+    创建 `alp-server.json`，填写名称、版本、协议版本、连接方式和发布者信息。
+  </Step>
+  <Step title="验证命名空间">
+    通过注册中心支持的账户、域名或组织验证方式证明名称所有权。
+  </Step>
+  <Step title="提交并检查">
+    提交元数据，确认 Schema 校验、命名空间验证和端点检查全部通过。
+  </Step>
+</Steps>
+
+发布新版本时不得覆盖历史版本记录，应提交具有新 `version` 的不可变记录。

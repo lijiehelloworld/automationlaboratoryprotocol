@@ -1,0 +1,32 @@
+---
+title: "快速开始"
+description: "ALP 调用方的最短接入流程"
+---
+
+# 快速开始
+
+调用方集成 ALP Client 能力后，按以下顺序与 ALP Server 交互。
+
+<Steps>
+  <Step title="发现服务">
+    调用 `server/discover`，确认协议版本、服务身份、可用设备和扩展能力。
+  </Step>
+  <Step title="获取设备清单">
+    调用 `devices/get_manifest`，取得设备属性、动作、物理资源类型和可选能力声明。
+  </Step>
+  <Step title="读取当前状态">
+    使用 `read` 获取所需属性和状态，并保存返回的 `revision`。
+  </Step>
+  <Step title="提交改变">
+    修改状态时使用 `write`；执行动作时使用 `invoke`。涉及并发状态时携带预期 `revision`，可重试请求携带幂等键。
+  </Step>
+  <Step title="跟踪结果">
+    同步请求直接读取结果；异步请求通过操作资源或事件订阅跟踪状态、结果和执行证据。
+  </Step>
+</Steps>
+
+<Warning>
+调用方必须根据 Manifest 中的 Schema、约束和安全声明构造请求，不得根据设备名称猜测能力。
+</Warning>
+
+下一步阅读[协议契约](/specification/protocol-contract)和[基础协议](/specification/base-protocol)。

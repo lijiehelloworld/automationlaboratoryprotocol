@@ -1,0 +1,39 @@
+---
+title: "Automation Laboratory Protocol"
+description: "自动化实验室协议概览"
+---
+
+# Automation Laboratory Protocol
+
+Automation Laboratory Protocol（ALP，自动化实验室协议）定义调用方与自动化设备服务之间的通用通信能力，使不同设备能够用一致方式公开设备模型、状态、动作、物理资源和可选扩展。
+
+<CardGroup cols={2}>
+  <Card title="阅读规范" icon="book" href="/specification/overview">
+    查看协议边界、消息语义、接口和符合性要求。
+  </Card>
+  <Card title="查看总体设计" icon="diagram-project" href="/architecture/overview">
+    理解调用方、服务、设备模型、运行状态和驱动之间的关系。
+  </Card>
+  <Card title="快速开始" icon="bolt" href="/quickstart">
+    按发现、读取、写入和调用顺序接入一个服务。
+  </Card>
+  <Card title="名词解释" icon="spell-check" href="/architecture/terms">
+    查询协议中的中英文术语和职责边界。
+  </Card>
+</CardGroup>
+
+## 核心能力
+
+ALP 由能力发现、设备模型、状态协调和三种核心交互原语组成：
+
+- `read`（读取）：读取属性、状态和事件，不触发设备动作。
+- `write`（写入）：修改可写状态，并经过校验、安全检查和驱动执行。
+- `invoke`（调用）：按动作定义启动设备动作，返回结果或异步操作句柄。
+
+协议还统一定义 `Physical Resource`（物理资源），并允许设备声明 `Workflow`（工作流）和 `Device Agent`（设备智能体）能力。
+
+## 规范状态
+
+- 版本：`2026-08-31`
+- 状态：Draft 0.1
+- 规范正文：Specification 导航下的页面

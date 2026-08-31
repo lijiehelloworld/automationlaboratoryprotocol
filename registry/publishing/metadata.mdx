@@ -1,0 +1,46 @@
+---
+title: "发布元数据"
+description: "alp-server.json 的结构和字段"
+---
+
+# 发布元数据
+
+发布者使用 `alp-server.json` 描述可发现的 ALP 服务。该文件是注册元数据，不是 Device Manifest，也不得包含凭据或设备实时状态。
+
+```json
+{
+  "schema_version": "2026-08-31",
+  "name": "org.example/service",
+  "title": "示例自动化服务",
+  "description": "设备无关的服务说明",
+  "version": "1.0.0",
+  "protocol_versions": ["2026-08-31"],
+  "publisher": {
+    "namespace": "org.example"
+  },
+  "connections": [
+    {
+      "type": "http",
+      "url": "https://example.org/alp"
+    }
+  ],
+  "capabilities": {
+    "read": true,
+    "write": true,
+    "invoke": true
+  }
+}
+```
+
+## 必需字段
+
+| 字段 | 说明 |
+| --- | --- |
+| `schema_version` | 注册元数据 Schema 版本。 |
+| `name` | 命名空间内唯一且稳定的服务名称。 |
+| `version` | 本条记录所描述的服务版本。 |
+| `protocol_versions` | 服务声明支持的 ALP 协议版本。 |
+| `publisher.namespace` | 已验证的发布者命名空间。 |
+| `connections` | 至少一种可解析的连接方式。 |
+
+能力摘要只用于检索。调用方必须以实时 `server/discover` 和 Device Manifest 为最终依据。
