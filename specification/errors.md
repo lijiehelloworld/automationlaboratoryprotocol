@@ -33,7 +33,7 @@ interface AllErrorData {
 | `-32003` | `AuthenticationRequired` | 需要有效访问令牌；通常配合 HTTP 401 |
 | `-32004` | `PermissionDenied` | 身份有效但权限不足 |
 | `-32005` | `DeviceNotFound` | 设备不存在或当前身份不可见 |
-| `-32006` | `CapabilityNotFound` | 对象类型、操作或 Workflow 未声明 |
+| `-32006` | `CapabilityNotFound` | 研究对象类型、操作或工作流未声明 |
 | `-32007` | `PreconditionFailed` | 当前状态不允许执行 |
 | `-32008` | `ConstraintViolation` | 参数、对象、位置或物理限制被违反 |
 | `-32009` | `RevisionConflict` | 指定修订号已经变化 |
@@ -55,6 +55,10 @@ interface AllErrorData {
 | `-32025` | `EventCursorExpired` | 事件游标超过保留期 |
 | `-32026` | `RateLimited` | ALL 方法级限流 |
 | `-32027` | `OperationResultExpired` | 操作任务仍可审计，但异步结果正文已超过保留期 |
+| `-32028` | `LoopNonConvergent` | 有限循环达到上限仍不满足停止条件 |
+| `-32029` | `ParallelWriteConflict` | 并行分支声明或产生相互冲突的状态写入 |
+| `-32030` | `ProtectedIntervalViolation` | 受保护区间不能保证连续执行或资源独占 |
+| `-32031` | `StateTransitionRejected` | 操作或工作流的状态转换未被接受 |
 
 ## 版本错误
 
@@ -120,6 +124,26 @@ interface AllErrorData {
   }
 }
 ```
+
+## 诊断结构
+
+操作和工作流的校验、失败或警告必须使用统一 `diagnostics` 数组。`MUST` 失败是阻断性错误；`SHOULD` 失败是非阻断性警告。服务端必须在物理执行前尽可能收集所有可判定诊断，并且强制诊断存在时不得提交研究对象状态。
+
+```json
+{
+  "code": "container-capacity",
+  "category": "container",
+  "severity": "error",
+  "rule_level": "MUST",
+  "message": "容器容量不满足操作要求",
+  "path": "objects.target.container.capacity",
+  "expected": {"minimum": {"value": 1, "unit": "mL"}},
+  "actual": {"value": 0.5, "unit": "mL"},
+  "remediation": "选择满足容量要求的研究对象"
+}
+```
+
+`code`、`category`、`severity`、`rule_level`、`message`、`path`、`expected`、`actual` 和 `remediation` 为固定字段；没有值时使用 `null`。诊断不得包含令牌、内部堆栈、原始驱动帧或不可见资源信息。
 
 ## 物理执行错误
 

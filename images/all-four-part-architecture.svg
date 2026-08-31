@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="920" viewBox="0 0 1440 920" role="img" aria-labelledby="title desc">
   <title id="title">Automation Laboratory Language 四模块架构</title>
-  <desc id="desc">Agent 通过 ALL 使用对象、操作、Workflow 和系统四类能力，并由底层物理设备完成执行。</desc>
+  <desc id="desc">Agent 通过 ALL 使用研究对象、工作站绑定操作、工作流和系统四类能力，并由底层物理设备完成执行。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#F5F8FF"/>
@@ -69,18 +69,18 @@
     <circle cx="285" cy="532" r="28" fill="#E7F7F1"/>
     <path d="M273 528h24v17h-24zM277 520h16l4 8h-24z" fill="none" stroke="#27997B" stroke-width="2.5" stroke-linejoin="round"/>
     <text class="card-title" x="285" y="586">对象</text>
-    <text class="card-sub" x="285" y="614">统一作业对象</text>
-    <rect x="177" y="642" width="216" height="38" rx="12" fill="#EBF8F4"/><text class="chip" x="285" y="667">标识 · 类型 · 状态</text>
-    <rect x="177" y="690" width="216" height="38" rx="12" fill="#EBF8F4"/><text class="chip" x="285" y="715">位置 · 包含 · 关系</text>
+    <text class="card-sub" x="285" y="614">统一研究对象</text>
+    <rect x="177" y="642" width="216" height="38" rx="12" fill="#EBF8F4"/><text class="chip" x="285" y="667">身份 · 样品 · 容器</text>
+    <rect x="177" y="690" width="216" height="38" rx="12" fill="#EBF8F4"/><text class="chip" x="285" y="715">证据 · 来源 · 扩展</text>
   </g>
 
   <g>
     <circle cx="575" cy="532" r="28" fill="#FFF1E6"/>
     <path d="M563 533h24M575 521v24" fill="none" stroke="#E27C2D" stroke-width="3" stroke-linecap="round"/>
     <text class="card-title" x="575" y="586">操作</text>
-    <text class="card-sub" x="575" y="614">对对象或设备执行</text>
+    <text class="card-sub" x="575" y="614">工作站绑定状态转换</text>
     <rect x="467" y="642" width="216" height="38" rx="12" fill="#FFF3E9"/><text class="chip" x="575" y="667">读取类 · 写入类 · 调用类</text>
-    <rect x="467" y="690" width="216" height="38" rx="12" fill="#FFF3E9"/><text class="chip" x="575" y="715">异步下发 · 状态 · 结果</text>
+    <rect x="467" y="690" width="216" height="38" rx="12" fill="#FFF3E9"/><text class="chip" x="575" y="715">强制约束 · 诊断 · 提交</text>
   </g>
 
   <g>
@@ -88,8 +88,8 @@
     <path d="M853 524h24v17h-24zM858 519v10M872 519v10" fill="none" stroke="#7757BE" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
     <text class="card-title" x="865" y="586">Workflow</text>
     <text class="card-sub" x="865" y="614">组织多个操作</text>
-    <rect x="757" y="642" width="216" height="38" rx="12" fill="#F4EFFE"/><text class="chip" x="865" y="667">模板 · 参数 · 步骤</text>
-    <rect x="757" y="690" width="216" height="38" rx="12" fill="#F4EFFE"/><text class="chip" x="865" y="715">校验 · 运行 · 版本</text>
+    <rect x="757" y="642" width="216" height="38" rx="12" fill="#F4EFFE"/><text class="chip" x="865" y="667">顺序 · 循环 · 分支</text>
+    <rect x="757" y="690" width="216" height="38" rx="12" fill="#F4EFFE"/><text class="chip" x="865" y="715">并行 · 保护 · 版本</text>
   </g>
 
   <g>

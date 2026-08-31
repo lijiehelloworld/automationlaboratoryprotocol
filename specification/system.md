@@ -3,7 +3,7 @@ title: "系统"
 description: "ALL 系统发现、能力清单、状态与事件接口"
 ---
 
-系统模块提供连接后首先需要的公共信息，包括协议版本、服务身份、设备目录、四模块能力清单、运行状态和事件。
+系统模块提供连接后首先需要的公共信息，包括协议版本、服务身份、设备目录、四模块能力清单、运行状态和事件。能力清单是研究对象、工作站绑定操作和工作流组合能力的唯一发现来源。
 
 ## 方法列表
 
@@ -236,9 +236,9 @@ description: "ALL 系统发现、能力清单、状态与事件接口"
 | `device` | `DeviceDescriptor` | 是 | 设备稳定身份和显示信息 |
 | `revision` | `integer` | 是 | `manifest` 域修订号 |
 | `system` | `SystemCapability` | 是 | 系统方法和事件能力 |
-| `objects` | `ObjectCapability` | 是 | 对象方法和完整对象类型定义 |
-| `operations` | `OperationCapability` | 是 | 操作方法和完整操作定义 |
-| `workflows` | `WorkflowCapability` | 是 | Workflow 方法和完整模板定义 |
+| `objects` | `ObjectCapability` | 是 | 研究对象方法、固定分区 Schema 与完整类型定义 |
+| `operations` | `OperationCapability` | 是 | 工作站绑定的状态转换方法和完整操作契约 |
+| `workflows` | `WorkflowCapability` | 是 | 四个工作流接口、完整模板及五类组合算子能力 |
 
 `device` 字段：
 
@@ -254,7 +254,7 @@ description: "ALL 系统发现、能力清单、状态与事件接口"
 
 方法数组必须按方法名升序排列，定义数组分别按 `object_type`、操作 `name`、Workflow `name + version` 排序。同一稳定主键不得重复。
 
-对象类型遵守[对象类型定义](./objects#对象类型定义)，操作遵守[操作定义](./operations#操作定义)，Workflow 遵守[workflow-定义](./workflows#workflow-定义)。能力清单必须内联这些定义，客户端不依赖其他方法才能理解完整接口。
+研究对象类型遵守[研究对象类型](./objects#研究对象类型)，操作遵守[操作定义](./operations#操作定义)，工作流遵守[工作流定义](./workflows#工作流定义)。能力清单必须内联这些定义，客户端不依赖其他方法才能理解完整接口。
 
 ### 未修改响应
 

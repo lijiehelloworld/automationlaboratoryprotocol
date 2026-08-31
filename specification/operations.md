@@ -3,7 +3,7 @@ title: "操作"
 description: "ALL 操作定义、读取、写入、调用和长任务接口"
 ---
 
-操作模块描述设备可以执行的单步能力。所有操作必须在能力清单中声明，客户端不得提交原始串口帧、寄存器地址、任意脚本、SDK 方法或未声明设备命令。
+操作模块描述设备可以执行的单步能力。一个操作是**工作站绑定的状态转换**：对一个或多个研究对象的当前状态和参数进行校验，在全部强制约束通过时，把状态从 $S_t$ 提交到 $S_{t+1}$ 并记录证据与来源。所有操作必须在能力清单中声明，客户端不得提交原始串口帧、寄存器地址、任意脚本、SDK 方法或未声明设备命令。
 
 `read`、`write` 和 `invoke` 是操作的三种类别，也是对应类别的统一调用入口，不是设备仅有的三个具体指令。具体指令由 `OperationDefinition.name` 标识；一个设备可以声明任意数量、语义不同的操作名称，客户端必须先发现定义，再按定义调用。
 
@@ -27,6 +27,7 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
 
 ```json
 {
+  "workstation": {"namespace": "laboratory.station", "identifier": "device-001"},
   "name": "read_environment_temperature",
   "kind": "read",
   "title": "读取环境温度",
@@ -50,6 +51,9 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
   "required_scopes": ["all:operations:read"],
   "object_roles": [],
   "preconditions": [],
+  "cautions": [],
+  "constraints": [],
+  "state_changes": [],
   "effects": [],
   "execution": {
     "may_change_physical_state": false,
@@ -68,10 +72,11 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
 
 ```json
 {
+  "workstation": {"namespace": "laboratory.station", "identifier": "device-001"},
   "name": "move_object",
   "kind": "invoke",
   "title": "移动对象",
-  "description": "把作业对象移动到设备内已声明位置。",
+  "description": "把研究对象移动到设备内已声明位置。",
   "input_schema": {
     "type": "object",
     "properties": {
@@ -95,14 +100,23 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
       "required": true,
       "min_count": 1,
       "max_count": 1,
-      "allowed_object_types": ["generic_container"]
+      "allowed_object_types": ["research_object.generic"]
     }
   ],
   "preconditions": [
     {"path": "system.state", "operator": "eq", "value": "idle"}
   ],
+  "cautions": [
+    {"code": "location_change", "message": "移动会改变容器位置与后续可用性。"}
+  ],
+  "constraints": [
+    {"rule_id": "target-location", "level": "MUST", "condition": {"path": "arguments.target_location", "operator": "exists"}, "category": "location"}
+  ],
+  "state_changes": [
+    {"target": "objects.${target}.container.location", "mode": "set", "value_from": "result.final_location"}
+  ],
   "effects": [
-    "updates:objects.{target}.location"
+    "updates:objects.{target}.container.location"
   ],
   "execution": {
     "may_change_physical_state": true,
@@ -130,10 +144,26 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
 | `required_scopes` | `string[]` | 是 | 最低 OAuth 权限范围 |
 | `object_roles` | `ObjectRoleDefinition[]` | 是 | 参与对象角色；无对象时为空数组 |
 | `preconditions` | `Condition[]` | 是 | 调用前必须成立的结构化条件 |
+| `cautions` | `Caution[]` | 是 | 不阻止执行的注意事项；必须随定义公开，不得隐藏为实现行为 |
+| `constraints` | `Constraint[]` | 是 | 强制或建议约束；强制失败阻止提交，建议失败保留警告 |
+| `state_changes` | `StateChange[]` | 是 | 成功提交后对研究对象和系统状态的结构化变更 |
 | `effects` | `string[]` | 是 | 用于规划和审计的声明效果，不自行授予写权限 |
 | `execution` | `ExecutionDefinition` | 是 | 副作用、异步任务、输入、取消、超时和结果保留能力 |
 
-操作定义变化必须递增能力清单修订号。操作执行产生的状态变化只递增运行状态或对象修订号。
+操作定义变化必须递增能力清单修订号。操作执行产生的状态变化只递增运行状态或研究对象修订号。
+
+## 操作状态转换契约
+
+每个操作定义必须完整公开：工作站身份、前置条件、注意事项、参数 Schema、强制/建议约束、状态变化、返回 Schema 与诊断类别。
+
+- `workstation.namespace` 必须是服务端范围内稳定、唯一的命名空间；`identifier` 必须指向当前设备或其公开的工作站标识。
+- `preconditions` 是操作可接受的对象、样品、容器、位置或系统状态。
+- `cautions` 说明跨步骤影响或限制；不得在未公开的情况下改变调度或状态。
+- `constraints[].level=MUST` 为强制约束。任何一项失败，操作不得接触物理设备、不得提交研究对象新状态，并返回 `diagnostics`。
+- `constraints[].level=SHOULD` 为建议约束。失败必须以 `severity=warning` 返回，但不会单独阻止转换。
+- `state_changes` 只在全部强制约束通过且物理结果被确认后提交；提交时必须更新对象修订号、追加 `provenance`，并添加相关 `evidence` 引用。
+
+服务端必须采用“先校验、后提交”规则：先收集全部可判定的强制错误和建议警告，再执行或接受任务；成功确认前不得对研究对象状态做部分写入。物理执行开始后结果无法确认时，返回 `outcome=unknown`，保留诊断与证据，并禁止把推测状态提交为确认状态。
 
 ## 条件表达式
 
@@ -319,6 +349,8 @@ eq ne lt lte gt gte in contains exists
 8. 幂等键校验；
 9. 获取设备和对象执行锁；
 10. 在锁内重新检查易变前置条件。
+
+校验响应或执行结果中的 `diagnostics` 必须是数组。每项至少包含 `code`、`category`、`severity`（`error` 或 `warning`）、`rule_level`（`MUST` 或 `SHOULD`）、`message`、`expected`、`actual`、`path` 与 `remediation`；不可得字段可为 `null`，但不得用非结构化文本替代。所有失败的 `MUST` 规则必须以 `severity=error` 返回；失败的 `SHOULD` 规则必须以 `severity=warning` 返回。
 
 `dry_run=true` 时必须执行全部非物理校验，但不得发送设备命令、修改状态、占用长期锁或产生物理效果。
 
@@ -528,6 +560,7 @@ type OperationTaskStatus =
   | "unknown";
 
 interface OperationDefinition {
+  workstation: { namespace: string; identifier: string };
   name: string;
   kind: OperationKind;
   title: string;
@@ -537,6 +570,9 @@ interface OperationDefinition {
   required_scopes: string[];
   object_roles: ObjectRoleDefinition[];
   preconditions: Condition[];
+  cautions: Caution[];
+  constraints: Constraint[];
+  state_changes: StateChange[];
   effects: string[];
   execution: ExecutionDefinition;
 }
@@ -564,6 +600,37 @@ interface Condition {
   path: string;
   operator: "eq" | "ne" | "lt" | "lte" | "gt" | "gte" | "in" | "contains" | "exists";
   value?: unknown;
+}
+
+interface Caution {
+  code: string;
+  message: string;
+}
+
+interface Constraint {
+  rule_id: string;
+  level: "MUST" | "SHOULD";
+  condition: Condition;
+  category: string;
+}
+
+interface StateChange {
+  target: string;
+  mode: "set" | "append" | "remove";
+  value_from?: string;
+  value?: unknown;
+}
+
+interface Diagnostic {
+  code: string;
+  category: string;
+  severity: "error" | "warning";
+  rule_level: "MUST" | "SHOULD";
+  message: string;
+  expected: unknown | null;
+  actual: unknown | null;
+  path: string | null;
+  remediation: string | null;
 }
 
 interface OperationOptions {

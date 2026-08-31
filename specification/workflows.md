@@ -1,374 +1,178 @@
 ---
-title: "Workflow"
-description: "ALL Workflow 模板、校验和运行接口"
+title: "工作流"
+description: "ALL 工作流模板、组合算子、校验和运行接口"
 ---
 
-Workflow 是由设备发布、可检查、可版本化的操作组合。Workflow 只能使用能力清单已经声明的对象类型和操作，不得扩大调用者权限或绕过单步操作的安全规则。
+工作流（Workflow）是由设备发布、可检查、可版本化的研究对象状态转换组合。工作流只能引用能力清单已声明的研究对象类型和操作；它不能扩大权限、绕过操作契约或把自由文本当作可执行指令。
 
 ## 方法列表
 
-Workflow 模块只定义四个接口：
+工作流模块**只定义四个对外接口**：
 
-| 方法 | 需要权限 | 说明 |
+| 方法 | 权限 | 说明 |
 | --- | --- | --- |
-| `workflows/list` | `all:workflows:read` | 查询可见 Workflow 摘要 |
-| `workflows/get` | `all:workflows:read` | 取得完整固定版本模板 |
-| `workflows/validate` | `all:workflows:run` | 校验输入、对象、权限和当前状态 |
-| `workflows/run` | `all:workflows:run` 及内部操作权限 | 运行固定版本 Workflow |
+| `workflows/list` | `all:workflows:read` | 查询可见工作流摘要 |
+| `workflows/get` | `all:workflows:read` | 取得固定版本完整模板 |
+| `workflows/validate` | `all:workflows:run` | 校验输入、对象、权限、结构与当前状态 |
+| `workflows/run` | `all:workflows:run` 及内部操作权限 | 运行固定版本工作流 |
 
-不支持 Workflow 的设备必须在能力清单中声明 `workflows.methods=[]` 和 `workflows.definitions=[]`。
+不支持工作流的设备必须在能力清单中声明 `workflows.methods=[]` 和 `workflows.definitions=[]`。不得额外公开 `workflows/create`、`workflows/update` 或任意脚本执行接口。
 
-## Workflow 定义
+## 工作流定义
 
 ```json
 {
-  "name": "standard_object_process",
+  "name": "standard_research_object_process",
   "version": "1.0.0",
   "revision": 3,
   "digest": "sha256:example",
-  "title": "标准对象处理",
-  "description": "读取状态、执行对象处理并确认结果。",
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "target_location": {"type": "string", "minLength": 1}
-    },
-    "required": ["target_location"],
-    "additionalProperties": false
+  "title": "标准研究对象处理",
+  "description": "在已声明约束下处理研究对象并确认结果。",
+  "input_schema": {"type": "object", "additionalProperties": false},
+  "object_roles": [{
+    "role": "target", "required": true, "min_count": 1, "max_count": 1,
+    "allowed_object_types": ["research_object.generic"]
+  }],
+  "required_scopes": ["all:workflows:run", "all:operations:execute"],
+  "preconditions": [{"path": "system.state", "operator": "eq", "value": "idle"}],
+  "program": {
+    "node_id": "root",
+    "type": "sequence",
+    "children": [{
+      "node_id": "move_target", "type": "operation", "method": "operations/invoke",
+      "name": "move_object", "object_bindings": {"target": "${objects.target}"},
+      "arguments": {"target_location": "${inputs.target_location}"}
+    }]
   },
-  "object_roles": [
-    {
-      "role": "target",
-      "required": true,
-      "min_count": 1,
-      "max_count": 1,
-      "allowed_object_types": ["generic_container"]
-    }
-  ],
-  "required_scopes": [
-    "all:workflows:run",
-    "all:operations:read",
-    "all:operations:execute"
-  ],
-  "preconditions": [
-    {"path": "system.state", "operator": "eq", "value": "idle"}
-  ],
-  "steps": [
-    {
-      "step_id": "read_status",
-      "type": "operation",
-      "method": "operations/read",
-      "name": "read_device_status",
-      "object_bindings": {},
-      "arguments": {}
-    },
-    {
-      "step_id": "move_target",
-      "type": "operation",
-      "method": "operations/invoke",
-      "name": "move_object",
-      "object_bindings": {
-        "target": "${objects.target}"
-      },
-      "arguments": {
-        "target_location": "${inputs.target_location}"
-      }
-    },
-    {
-      "step_id": "verify_result",
-      "type": "assert",
-      "condition": {
-        "path": "steps.move_target.value.final_location",
-        "operator": "eq",
-        "value_from": "inputs.target_location"
-      }
-    }
-  ],
-  "result_schema": {
-    "type": "object",
-    "properties": {
-      "final_location": {"type": "string"}
-    },
-    "required": ["final_location"],
-    "additionalProperties": false
-  },
-  "result_mapping": {
-    "final_location": "${steps.move_target.value.final_location}"
-  },
-  "execution": {
-    "may_change_physical_state": true,
-    "may_return_task": true,
-    "may_require_input": false,
-    "cancellable": true,
-    "default_timeout_ms": 90000
-  }
+  "result_schema": {"type": "object", "additionalProperties": false},
+  "result_mapping": {},
+  "execution": {"may_change_physical_state": true, "may_return_task": true, "may_require_input": false, "cancellable": true, "default_timeout_ms": 90000}
 }
 ```
 
-## 定义字段
+`name + version + digest` 唯一确定可运行模板。程序、输入、结果、权限、前置条件、研究对象角色或物理语义改变时，服务端必须发布新的 `version` 和 `digest`；同一组合不得返回不同语义内容。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `name` | `string` | 是 | 设备内稳定、唯一的 Workflow 名称 |
-| `version` | `string` | 是 | 不可变语义版本 |
-| `revision` | `integer` | 是 | 同一版本的元数据修订号 |
-| `digest` | `string` | 是 | 规范化模板内容的 SHA-256 摘要 |
-| `title` | `string` | 是 | 面向人的名称 |
-| `description` | `string` | 是 | 固定流程语义 |
-| `input_schema` | `JsonSchema` | 是 | Workflow 输入定义 |
-| `object_roles` | `ObjectRoleDefinition[]` | 是 | 参与对象角色 |
-| `required_scopes` | `string[]` | 是 | Workflow 与全部步骤权限范围的并集 |
-| `preconditions` | `Condition[]` | 是 | Workflow 启动前置条件 |
-| `steps` | `WorkflowStep[]` | 是 | 非空、有序步骤列表 |
-| `result_schema` | `JsonSchema` | 是 | Workflow 成功结果定义 |
-| `result_mapping` | `object` | 是 | 从步骤输出映射最终结果 |
-| `execution` | `WorkflowExecutionDefinition` | 是 | 副作用、任务、输入、取消和超时能力 |
+| `name`、`version`、`digest` | `string` | 是 | 稳定名称、不可变语义版本和规范化内容 SHA-256 摘要 |
+| `revision` | `integer` | 是 | 同一版本元数据修订号 |
+| `input_schema`、`result_schema` | `JsonSchema` | 是 | 输入和成功结果的 JSON Schema 2020-12 |
+| `object_roles` | `ObjectRoleDefinition[]` | 是 | 参与研究对象角色 |
+| `required_scopes` | `string[]` | 是 | 工作流及全部内部操作所需权限的并集 |
+| `preconditions` | `Condition[]` | 是 | 运行前必须成立的条件 |
+| `program` | `WorkflowNode` | 是 | 递归组合程序，必须恰好有一个根节点 |
+| `result_mapping` | `object` | 是 | 从已完成节点输出映射最终结果 |
+| `execution` | `WorkflowExecutionDefinition` | 是 | 副作用、异步、输入、取消和超时能力 |
 
-`name + version + digest` 唯一确定一个可运行模板。步骤、输入、结果、权限、前置条件、对象角色或物理语义发生变化时必须发布新版本和新摘要。
+## 五种组合算子
 
-## 步骤类型
+`program` 只能由下列五种组合算子和叶子节点递归组成。叶子节点 `operation`、`assert` 与 `wait` 不属于额外对外接口。
 
-只允许三种步骤类型：
+| 类型 | 中文名称 | 必填字段 | 强制结构规则 |
+| --- | --- | --- | --- |
+| `sequence` | 顺序 | `children` | 子节点按数组顺序执行；上一步输出与状态必须满足下一步输入域 |
+| `loop` | 有限循环 | `body`、`continue_when`、`max_iterations` | `max_iterations` 必须为正整数；达到上限时条件仍成立，返回 `LoopNonConvergent` |
+| `branch` | 条件分支 | `cases`、`otherwise` | 分支条件必须得到唯一结果；没有匹配分支时执行 `otherwise` 或失败 |
+| `parallel` | 并行汇合 | `branches` | 并行分支的写集合不得冲突；共享状态变更必须完全一致后才可汇合 |
+| `protected` | 受保护区间 | `resource_keys`、`body` | 区间必须在调度中连续、不可被未声明节点插入；相关资源锁须覆盖整个区间 |
 
-### `operation`
-
-调用 `operations/read`、`operations/write` 或 `operations/invoke`。引用的操作必须存在于同一能力清单，参数和对象绑定必须通过该操作定义校验。
-
-### `assert`
-
-检查系统状态、对象状态、Workflow 输入或已完成步骤输出。断言只能使用 ALL 条件操作符，不能执行任意表达式或代码。
-
-### `wait`
-
-等待结构化条件成立：
+### 叶子节点
 
 ```json
 {
-  "step_id": "wait_until_idle",
-  "type": "wait",
-  "condition": {
-    "path": "system.state",
-    "operator": "eq",
-    "value": "idle"
-  },
-  "poll_interval_ms": 500,
-  "timeout_ms": 30000
+  "node_id": "measure", "type": "operation", "method": "operations/invoke",
+  "name": "start_measurement", "object_bindings": {"target": "${objects.target}"}, "arguments": {}
 }
 ```
 
-`poll_interval_ms` 必须大于 `0`，`timeout_ms` 必须明确且不得超过 Workflow 默认超时。
+`operation` 必须引用同一能力清单中声明的操作，参数、研究对象绑定、前置条件、约束和状态变化均由该操作定义校验。
 
-## 模板表达式
-
-模板值只允许引用：
+`assert` 只可使用 ALL 条件操作符；`wait` 必须声明正的 `poll_interval_ms` 和有限 `timeout_ms`。模板表达式只允许引用：
 
 ```text
 ${inputs.<path>}
 ${objects.<role>}
-${steps.<step_id>.value.<path>}
+${nodes.<node_id>.value.<path>}
 ```
 
-实现必须把引用当作结构化路径解析，不得使用通用脚本、模板执行器或动态代码求值。引用不存在、越界或类型不匹配时校验失败。
+服务端必须把引用作为结构化路径解析，禁止使用动态代码、通用表达式语言或任意模板执行器。
 
-## `workflows/list`
-
-### 请求
+### 组合节点示例
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "workflow-list-1",
-  "method": "workflows/list",
+  "node_id": "bounded-repeat",
+  "type": "loop",
+  "max_iterations": 3,
+  "continue_when": {"path": "nodes.measure.value.accepted", "operator": "eq", "value": false},
+  "body": {"node_id": "measure", "type": "operation", "method": "operations/invoke", "name": "measure", "object_bindings": {}, "arguments": {}}
+}
+```
+
+```json
+{
+  "node_id": "protected-transfer",
+  "type": "protected",
+  "resource_keys": ["objects.${objects.target}"],
+  "body": {"node_id": "transfer-steps", "type": "sequence", "children": []}
+}
+```
+
+## 静态与运行时校验
+
+`workflows/validate` 必须在不接触物理设备的前提下校验：模板摘要、权限、输入 Schema、研究对象角色与修订号、节点引用、五种算子的结构规则、类型兼容性、写集合、保护资源和当前前置条件。成功时返回短期 `validation_token`，它绑定主体、客户端、设备、模板摘要、输入摘要、研究对象修订号与系统修订号。
+
+`workflows/run` 必须在锁内重新校验同一组易变条件；`validation_token` 不可替代锁内复验。运行中：
+
+1. 只在前置条件和全部强制约束通过时调度叶子操作；
+2. 对每个节点记录输入摘要、输出、诊断、时间与研究对象修订号；
+3. 操作的强制失败不得提交研究对象状态，建议失败必须记录为警告；
+4. 并行汇合前必须检查写集合和共享变更的一致性；
+5. 物理结果为 `unknown` 时，必须停止依赖该结果的后续物理节点；
+6. 返回同步结果或 `resultType=operation` 任务句柄；异步进度与最终结果统一由 `operations/get` 获取。
+
+## 四个接口
+
+### `workflows/list`
+
+请求参数为 `device_id`、可选 `object_type`、`cursor`、`limit` 和 `if_revision`。响应必须返回缓存字段、`items` 和 `next_cursor`；项目按 `name`、`version` 升序。每个摘要至少包含 `name`、`version`、`revision`、`digest`、`title`、`required_scopes` 与 `may_change_physical_state`。
+
+### `workflows/get`
+
+请求必须包含 `device_id`、`name`、`version` 与可选 `if_digest`。完整响应返回上述完整 `WorkflowDefinition`；`if_digest` 命中时可以返回 `not_modified=true` 并省略 `workflow`。
+
+### `workflows/validate`
+
+```json
+{
+  "jsonrpc": "2.0", "id": "workflow-validate-1", "method": "workflows/validate",
   "params": {
-    "device_id": "device-001",
-    "object_type": null,
-    "if_revision": null
+    "device_id": "device-001", "name": "standard_research_object_process", "version": "1.0.0", "digest": "sha256:example",
+    "inputs": {"target_location": "workspace.output"}, "object_bindings": {"target": ["research-object-001"]},
+    "expected_state_revision": 325, "expected_object_revisions": {"research-object-001": 4}
   }
 }
 ```
 
-### 响应
+响应必须包含 `valid`、`checks`、`diagnostics`、`state_revision`、`object_revisions`、`validation_token`（仅 `valid=true` 时）和 `expires_at`。强制校验失败时 `valid=false`，不得发出物理命令。
 
-```json
-{
-  "resultType": "complete",
-  "ttlMs": 60000,
-  "cacheScope": "private",
-  "revision": 7,
-  "not_modified": false,
-  "items": [
-    {
-      "name": "standard_object_process",
-      "version": "1.0.0",
-      "revision": 3,
-      "digest": "sha256:example",
-      "title": "标准对象处理",
-      "description": "读取状态、执行对象处理并确认结果。",
-      "required_scopes": ["all:workflows:run"],
-      "may_change_physical_state": true
-    }
-  ],
-  "next_cursor": null
-}
-```
+### `workflows/run`
 
-`items` 按 `name`、`version` 升序排列。`revision` 属于能力清单域。
-
-## `workflows/get`
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "workflow-get-1",
-  "method": "workflows/get",
-  "params": {
-    "device_id": "device-001",
-    "name": "standard_object_process",
-    "version": "1.0.0",
-    "if_digest": null
-  }
-}
-```
-
-完整响应：
-
-```json
-{
-  "resultType": "complete",
-  "not_modified": false,
-  "workflow": {}
-}
-```
-
-`if_digest` 与当前摘要相等时可以返回 `not_modified=true` 并省略 `workflow`。服务端不得在同一 `name + version` 下返回不同语义模板。
-
-## `workflows/validate`
-
-校验固定模板、输入、对象、权限和当前设备状态，但不执行物理动作：
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "workflow-validate-1",
-  "method": "workflows/validate",
-  "params": {
-    "device_id": "device-001",
-    "name": "standard_object_process",
-    "version": "1.0.0",
-    "digest": "sha256:example",
-    "inputs": {"target_location": "workspace.output"},
-    "object_bindings": {"target": ["object-001"]},
-    "expected_state_revision": 325,
-    "expected_object_revisions": {"object-001": 4}
-  }
-}
-```
-
-```json
-{
-  "resultType": "complete",
-  "valid": true,
-  "validated_at": "2026-08-31T10:20:31.203+08:00",
-  "state_revision": 325,
-  "object_revisions": {"object-001": 4},
-  "checks": [
-    {"name": "schema", "status": "passed", "message": null},
-    {"name": "authorization", "status": "passed", "message": null},
-    {"name": "objects", "status": "passed", "message": null},
-    {"name": "preconditions", "status": "passed", "message": null}
-  ],
-  "validation_token": "validation-opaque-token",
-  "expires_at": "2026-08-31T10:21:01.203+08:00"
-}
-```
-
-`validation_token` 是短期、不透明、绑定主体、客户端、设备、模板摘要、输入摘要、对象修订号和设备状态修订号的句柄。它不能替代 `workflows/run` 的锁内复验。
-
-## `workflows/run`
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "workflow-run-1",
-  "method": "workflows/run",
-  "params": {
-    "device_id": "device-001",
-    "name": "standard_object_process",
-    "version": "1.0.0",
-    "digest": "sha256:example",
-    "inputs": {"target_location": "workspace.output"},
-    "object_bindings": {"target": ["object-001"]},
-    "options": {
-      "expected_state_revision": 325,
-      "expected_object_revisions": {"object-001": 4},
-      "validation_token": "validation-opaque-token",
-      "deadline": "2026-08-31T10:25:00+08:00",
-      "execution_mode": "async",
-      "timeout_ms": 90000,
-      "idempotency_key": null
-    }
-  }
-}
-```
-
-Workflow 运行必须：
-
-1. 固定 `name + version + digest`；
-2. 校验调用者拥有 Workflow 和全部内部操作权限；
-3. 校验输入与对象角色；
-4. 获取设备与参与对象执行锁；
-5. 在锁内重新检查状态修订号、对象修订号和全部前置条件；
-6. 按模板顺序执行步骤；
-7. 保存每步输入摘要、输出、时间、结果和错误；
-8. 失败时停止未开始步骤，并按模板声明执行安全收尾；
-9. 返回同步结果或 `resultType=operation` 的操作任务句柄；异步状态和最终结果统一通过 `operations/get` 读取。
-
-Workflow 内部步骤的物理结果不明确时，整个 Workflow 结果必须为 `unknown`，不得继续依赖该步骤结果执行后续物理步骤。
+请求使用同一模板、输入、对象绑定和修订号，并在 `options` 中传入 `validation_token`（可选）、`deadline`、`execution_mode`、`timeout_ms` 与 `idempotency_key`。服务端必须冻结本次运行使用的 `name + version + digest`，并在返回的同步结果或操作任务中报告该三元组。
 
 ## 正式类型定义
 
 ```typescript
-interface WorkflowDefinition {
-  name: string;
-  version: string;
-  revision: number;
-  digest: string;
-  title: string;
-  description: string;
-  input_schema: Record<string, unknown>;
-  object_roles: ObjectRoleDefinition[];
-  required_scopes: string[];
-  preconditions: Condition[];
-  steps: WorkflowStep[];
-  result_schema: Record<string, unknown>;
-  result_mapping: Record<string, string>;
-  execution: WorkflowExecutionDefinition;
-}
+type WorkflowNode = SequenceNode | LoopNode | BranchNode | ParallelNode | ProtectedNode | OperationNode | AssertNode | WaitNode;
 
-type WorkflowStep = OperationStep | AssertStep | WaitStep;
-
-interface OperationStep {
-  step_id: string;
-  type: "operation";
-  method: "operations/read" | "operations/write" | "operations/invoke";
-  name: string;
-  object_bindings: Record<string, string | string[]>;
-  arguments: Record<string, unknown>;
-}
-
-interface AssertStep {
-  step_id: string;
-  type: "assert";
-  condition: Condition;
-}
-
-interface WaitStep {
-  step_id: string;
-  type: "wait";
-  condition: Condition;
-  poll_interval_ms: number;
-  timeout_ms: number;
-}
+interface SequenceNode { node_id: string; type: "sequence"; children: WorkflowNode[]; }
+interface LoopNode { node_id: string; type: "loop"; body: WorkflowNode; continue_when: Condition; max_iterations: number; }
+interface BranchNode { node_id: string; type: "branch"; cases: Array<{ when: Condition; body: WorkflowNode }>; otherwise?: WorkflowNode; }
+interface ParallelNode { node_id: string; type: "parallel"; branches: WorkflowNode[]; }
+interface ProtectedNode { node_id: string; type: "protected"; resource_keys: string[]; body: WorkflowNode; }
+interface OperationNode { node_id: string; type: "operation"; method: "operations/read" | "operations/write" | "operations/invoke"; name: string; object_bindings: Record<string, string | string[]>; arguments: Record<string, unknown>; }
+interface AssertNode { node_id: string; type: "assert"; condition: Condition; }
+interface WaitNode { node_id: string; type: "wait"; condition: Condition; poll_interval_ms: number; timeout_ms: number; }
 
 interface WorkflowExecutionDefinition {
   may_change_physical_state: boolean;

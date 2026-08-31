@@ -49,7 +49,7 @@
             ]
           },
           {
-            "group": "对象",
+            "group": "研究对象",
             "pages": [
               "specification/objects"
             ]
@@ -61,7 +61,7 @@
             ]
           },
           {
-            "group": "Workflow",
+            "group": "工作流",
             "pages": [
               "specification/workflows"
             ]

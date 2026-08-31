@@ -216,8 +216,8 @@ ALL 定义以下基础权限范围：
 | 权限范围 | 允许行为 |
 | --- | --- |
 | `all:system:read` | 系统发现、能力清单、状态和事件读取 |
-| `all:objects:read` | 查询作业对象 |
-| `all:objects:write` | 登记和修改作业对象 |
+| `all:objects:read` | 查询研究对象 |
+| `all:objects:write` | 登记和修正研究对象元数据 |
 | `all:operations:read` | 查询操作定义和操作任务 |
 | `all:operations:execute` | 执行写入、调用、响应输入和取消 |
 | `all:workflows:read` | 查询 Workflow 模板 |
