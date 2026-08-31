@@ -92,7 +92,7 @@ UNKNOWN
 
 ## 错误
 
-解析、方法和参数错误使用标准 JSON-RPC 错误。ALP 应用错误：
+解析、方法和参数错误使用标准 JSON-RPC 错误。ALL 应用错误：
 
 - 在物理执行开始前发现的拒绝、权限、数据结构定义、前置条件和并发错误使用 JSON-RPC `error`。
 - 一旦物理执行已经开始，服务端必须返回普通 `result`，使用 `outcome=failed` 或 `outcome=unknown`，并在结果内保留同结构的错误、修订号和证据。

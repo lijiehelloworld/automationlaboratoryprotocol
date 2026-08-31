@@ -50,7 +50,7 @@ description: "服务发现、设备清单与设备模型"
     "devices": [
       {
         "device_id": "device-001",
-        "manifest_uri": "alp://device-001/manifest"
+        "manifest_uri": "all://device-001/manifest"
       }
     ]
   }
@@ -213,7 +213,7 @@ description: "服务发现、设备清单与设备模型"
   "constraints": [],
   "device_agent": {
     "agent_id": "device-001-agent",
-    "definition_uri": "alp://device-001/device-agent"
+    "definition_uri": "all://device-001/device-agent"
   }
 }
 ```
@@ -222,7 +222,7 @@ description: "服务发现、设备清单与设备模型"
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `protocol_version` | `string` | 是 | 能力清单对应的 ALP 日期版本 |
+| `protocol_version` | `string` | 是 | 能力清单对应的 ALL 日期版本 |
 | `device` | `Device` | 是 | 设备身份和组成 |
 | `revision` | `integer` | 是 | 能力清单域版本；能力、数据结构定义、约束或成员定义变化时必须递增 |
 | `properties` | `PropertyDefinition[]` | 是 | [属性](./properties)定义；没有属性时为空数组 |

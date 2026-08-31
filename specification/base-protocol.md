@@ -1,6 +1,6 @@
 ---
 title: "基础协议"
-description: "ALP 生命周期、消息、版本与传输规范"
+description: "ALL 生命周期、消息、版本与传输规范"
 ---
 
 ## 生命周期
@@ -135,7 +135,7 @@ catalog.changed
 
 ## 消息
 
-JSON-RPC 固定字段使用其既定名称。ALP 的协议控制字段（例如 `resultType`、`protocolVersion`、`requestId`）使用 `lowerCamelCase` 命名；设备、对象、动作和参数等领域字段使用 `snake_case` 命名。实现不得同时发送同一字段的多种命名别名。
+JSON-RPC 固定字段使用其既定名称。ALL 的协议控制字段（例如 `resultType`、`protocolVersion`、`requestId`）使用 `lowerCamelCase` 命名；设备、对象、动作和参数等领域字段使用 `snake_case` 命名。实现不得同时发送同一字段的多种命名别名。
 
 ### 请求
 
@@ -185,15 +185,15 @@ JSON-RPC 固定字段使用其既定名称。ALP 的协议控制字段（例如 
 - 唯一请求 `id`；
 - `method`；
 - `params`；
-- `_meta.alp.protocolVersion`；
-- `_meta.alp.requestId`；
+- `_meta.all.protocolVersion`；
+- `_meta.all.requestId`；
 - 客户端能力声明。
 
-JSON-RPC `id` 与 `_meta.alp.requestId` 必须是相同的非空字符串；HTTP 使用 `ALP-Request-Id` 时也必须一致。不带 `id` 的通知不能用于 ALP 方法。
+JSON-RPC `id` 与 `_meta.all.requestId` 必须是相同的非空字符串；HTTP 使用 `ALL-Request-Id` 时也必须一致。不带 `id` 的通知不能用于 ALL 方法。
 
 `clientInfo` 用于诊断和兼容性判断，不是授权凭据。调用身份必须来自经过验证的连接、令牌、证书或可信本地运行环境。
 
-下文请求示例为突出方法参数，通常省略重复的 `_meta`；实际线协议请求仍必须携带本节规定的完整 `_meta.alp`。
+下文请求示例为突出方法参数，通常省略重复的 `_meta`；实际线协议请求仍必须携带本节规定的完整 `_meta.all`。
 
 ### 完成结果
 
@@ -257,7 +257,7 @@ required | recommended | none
 
 ### 自包含请求
 
-ALP 核心不建立协议级会话，也不使用隐藏连接状态保存协议版本或客户端能力。每个请求必须自带：
+ALL 核心不建立协议级会话，也不使用隐藏连接状态保存协议版本或客户端能力。每个请求必须自带：
 
 - 协议版本；
 - 客户端能力；
@@ -326,7 +326,7 @@ ALP 核心不建立协议级会话，也不使用隐藏连接状态保存协议�
 
 ### 追踪上下文
 
-客户端可以在 `_meta.alp.traceContext` 中传递 `traceparent`、`tracestate` 和 `baggage`。服务端应当将有效追踪上下文关联到工作流、操作任务、底层执行和审计记录，但必须：
+客户端可以在 `_meta.all.traceContext` 中传递 `traceparent`、`tracestate` 和 `baggage`。服务端应当将有效追踪上下文关联到工作流、操作任务、底层执行和审计记录，但必须：
 
 - 校验字段长度和格式；
 - 丢弃不可信或超限的 `baggage` 字段；
@@ -344,13 +344,13 @@ ALP 核心不建立协议级会话，也不使用隐藏连接状态保存协议�
 
 ### 数据结构定义与数据校验
 
-ALP 的 `input_schema`、`output_schema`、输入请求数据结构定义和对象字段数据结构定义使用 JSON 数据结构定义标准 2020-12 的语义。
+ALL 的 `input_schema`、`output_schema`、输入请求数据结构定义和对象字段数据结构定义使用 JSON 数据结构定义标准 2020-12 的语义。
 
 - 数据结构定义必须声明根类型；面向信任边界的对象数据结构定义必须明确 `additionalProperties`。
 - 数值必须同时声明单位或引用带固定单位的属性；不得依赖显示文字推断单位。
 - 日期时间必须使用带时区的 RFC 3339 字符串。
 - 二进制内容必须通过资源 URI 返回，不得作为无上限 Base64 字段嵌入普通结果。
-- `$ref` 必须指向能力清单内定义；声明 `ALP-Resources` 时也可以指向通过 `resources/read` 可读取的不可变数据结构定义资源。
+- `$ref` 必须指向能力清单内定义；声明 `ALL-Resources` 时也可以指向通过 `resources/read` 可读取的不可变数据结构定义资源。
 - 服务端必须限制数据结构定义大小、引用深度、解析时间和循环引用。
 - 客户端必须将未知字段视为扩展数据；只有数据结构定义明确禁止时才拒绝未知输入字段。
 - 对同一名称和版本，数据结构定义内容摘要必须稳定；内容变化必须更新修订号或版本。
@@ -370,7 +370,7 @@ ALP 的 `input_schema`、`output_schema`、输入请求数据结构定义和对�
 
 ## 版本管理
 
-ALP 使用日期版本：
+ALL 使用日期版本：
 
 ```text
 YYYY-MM-DD
@@ -393,7 +393,7 @@ ACTIVE | DEPRECATED | REMOVED
 
 ## 传输
 
-ALP 核心只定义 HTTP 和标准输入输出两种线协议；代码接口是本地语言绑定。其他网络、消息总线或实时流传输必须通过显式扩展定义，不能改变核心消息和结果语义。
+ALL 核心只定义 HTTP 和标准输入输出两种线协议；代码接口是本地语言绑定。其他网络、消息总线或实时流传输必须通过显式扩展定义，不能改变核心消息和结果语义。
 
 #### HTTP
 
@@ -406,15 +406,15 @@ POST /alp
 请求头：
 
 ```http
-ALP-Protocol-Version: 2026-08-31
-ALP-Method: invoke
-ALP-Name: move_object
-ALP-Request-Id: req-0001
+ALL-Protocol-Version: 2026-08-31
+ALL-Method: invoke
+ALL-Name: move_object
+ALL-Request-Id: req-0001
 Content-Type: application/json
 Accept: application/json
 ```
 
-`ALP-Method`、`ALP-Name` 和 `ALP-Request-Id` 使网关可以在不解析请求正文的情况下完成路由、鉴权、限流、审计和计量。`ALP-Name` 仅在请求引用明确动作、工作流或资源时使用。HTTP 头和 JSON-RPC 正文冲突时，服务端必须返回 `HeaderMismatch`。
+`ALL-Method`、`ALL-Name` 和 `ALL-Request-Id` 使网关可以在不解析请求正文的情况下完成路由、鉴权、限流、审计和计量。`ALL-Name` 仅在请求引用明确动作、工作流或资源时使用。HTTP 头和 JSON-RPC 正文冲突时，服务端必须返回 `HeaderMismatch`。
 
 HTTP 请求必须是自包含请求。服务端不得使用浏览器会话信息或隐式连接会话保存协议能力。设备所有权、执行锁和运行状态可以保存在共享后端，但必须通过显式设备 ID 和句柄访问。
 

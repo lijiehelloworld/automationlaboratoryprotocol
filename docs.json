@@ -1,9 +1,9 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Automation Laboratory Protocol",
-  "description": "Automation Laboratory Protocol（ALP，自动化实验室协议）中文规范",
-  "logo": "/images/alp-logo.svg",
+  "name": "Automation Laboratory Language",
+  "description": "Automation Laboratory Language（ALL，自动化实验室语言）中文规范",
+  "logo": "/images/all-logo.svg",
   "colors": {
     "primary": "#155EEF",
     "light": "#2E90FA",
@@ -159,6 +159,6 @@
     }
   },
   "search": {
-    "prompt": "搜索 ALP 文档..."
+    "prompt": "搜索 ALL 文档..."
   }
 }

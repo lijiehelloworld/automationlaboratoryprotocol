@@ -1,32 +1,32 @@
 ---
 title: "符合性"
-description: "ALP 实现符合性等级和必需检查"
+description: "ALL 实现符合性等级和必需检查"
 ---
 
 ## 符合性等级
 
 | 等级 | 必须实现 |
 | --- | --- |
-| `ALP-Core` | 日期版本、消息、发现、`devices/get_manifest`、`read`、数据结构定义、错误和安全基础 |
-| `ALP-Control` | `write` 或 `invoke`、数据结构定义、前置条件、约束、执行锁、试运行和审计 |
-| `ALP-PhysicalResources` | `PhysicalResource`、`WorkObject`、`DeviceSupply` 数据结构定义，统一查询、登记、修改、状态事件及专用操作 |
-| `ALP-Transfers` | 本设备边界的 `prepare/confirm/get/cancel`、交接点和物理资源位置更新 |
-| `ALP-Workflow` | `workflows/validate/run`、模板摘要、结果和审计 |
-| `ALP-Resources` | `resources/list/read`、URI 和 MIME 类型 |
-| `ALP-Operations` | `operations/get`；需要中途输入时实现 `respond`，支持安全取消时实现 `cancel` |
-| `ALP-Events` | `events/subscribe/poll/unsubscribe`、主题过滤、游标续读、重复投递去重和过期恢复 |
-| `ALP-DeviceAgent` | 单逻辑智能体、`agent/describe/invoke`、计划模式、最小权限和受控执行 |
+| `ALL-Core` | 日期版本、消息、发现、`devices/get_manifest`、`read`、数据结构定义、错误和安全基础 |
+| `ALL-Control` | `write` 或 `invoke`、数据结构定义、前置条件、约束、执行锁、试运行和审计 |
+| `ALL-PhysicalResources` | `PhysicalResource`、`WorkObject`、`DeviceSupply` 数据结构定义，统一查询、登记、修改、状态事件及专用操作 |
+| `ALL-Transfers` | 本设备边界的 `prepare/confirm/get/cancel`、交接点和物理资源位置更新 |
+| `ALL-Workflow` | `workflows/validate/run`、模板摘要、结果和审计 |
+| `ALL-Resources` | `resources/list/read`、URI 和 MIME 类型 |
+| `ALL-Operations` | `operations/get`；需要中途输入时实现 `respond`，支持安全取消时实现 `cancel` |
+| `ALL-Events` | `events/subscribe/poll/unsubscribe`、主题过滤、游标续读、重复投递去重和过期恢复 |
+| `ALL-DeviceAgent` | 单逻辑智能体、`agent/describe/invoke`、计划模式、最小权限和受控执行 |
 
 要求：
 
-- 所有设备必须达到 `ALP-Core`。
-- 只读设备可以只实现 `ALP-Core`。
-- 改变物理状态的设备必须达到 `ALP-Control`；工作流是独立可选等级。
-- 管理作业对象或设备供给物料的设备必须达到 `ALP-PhysicalResources`。
-- 接受物理资源进出的设备必须达到 `ALP-Transfers`。
+- 所有设备必须达到 `ALL-Core`。
+- 只读设备可以只实现 `ALL-Core`。
+- 改变物理状态的设备必须达到 `ALL-Control`；工作流是独立可选等级。
+- 管理作业对象或设备供给物料的设备必须达到 `ALL-PhysicalResources`。
+- 接受物理资源进出的设备必须达到 `ALL-Transfers`。
 - 设备供给物料管理不要求实现采购、仓储或供应链系统。
-- 声明工作流能力的设备必须达到 `ALP-Workflow`；未声明时普通 `read/write/invoke` 仍须独立可用。
-- 声明 `events=true` 的服务端必须达到 `ALP-Events`；仅支持 HTTP 时至少提供 `poll` 交付模式。
+- 声明工作流能力的设备必须达到 `ALL-Workflow`；未声明时普通 `read/write/invoke` 仍须独立可用。
+- 声明 `events=true` 的服务端必须达到 `ALL-Events`；仅支持 HTTP 时至少提供 `poll` 交付模式。
 - `device_agent` 字段必须保留，能力本身可以不提供。
 - 组合设备必须声明成员设备、成员角色、统一状态修订号和物理执行锁所有权。
 - 不支持的可选能力必须从能力声明中省略。

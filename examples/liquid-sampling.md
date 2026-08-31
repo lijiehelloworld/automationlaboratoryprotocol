@@ -1,6 +1,6 @@
 ---
 title: "液体进样示例"
-description: "非规范性的 ALP 接口组合示例"
+description: "非规范性的 ALL 接口组合示例"
 ---
 
 本节仅演示接口组合方式，不定义设备结构、动作名称、容器型号或推荐实验流程。示例目标是从一个源容器取 100 μL，并加入多孔容器的目标位置。
@@ -11,8 +11,8 @@ description: "非规范性的 ALP 接口组合示例"
 
 ```mermaid
 sequenceDiagram
-    participant C as 调用方（含 ALP 客户端）
-    participant S as ALP 服务端
+    participant C as 调用方（含 ALL 客户端）
+    participant S as ALL 服务端
     participant H as 人员或机器人
 
     C->>S: server/discover

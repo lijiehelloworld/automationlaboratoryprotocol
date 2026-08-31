@@ -44,7 +44,7 @@ description: "可选单设备智能体的定义、方法和安全边界"
       "workflows:submit"
     ],
     "guidance_resources": [
-      "alp://device-001/guidance/operation"
+      "all://device-001/guidance/operation"
     ],
     "requires_human_approval": [
       "execute_workflow",
@@ -59,7 +59,7 @@ description: "可选单设备智能体的定义、方法和安全边界"
 - `provider` 只说明来源，不代表自动受信任。
 - `modes` 必须至少包含 `plan_only`。
 - `execute_workflow` 和 `execute_experiment` 可以不提供；声明后必须遵守完整执行规范。
-- 声明 `execute_experiment` 的设备必须同时实现 `ALP-Operations`，使完整实验可以显式查询、取消或处理输入等待。
+- 声明 `execute_experiment` 的设备必须同时实现 `ALL-Operations`，使完整实验可以显式查询、取消或处理输入等待。
 - 智能体权限不能超过调用者权限与智能体范围的交集。
 - 凭据、模型密钥和供应商内部端点不得出现在能力清单中。
 
@@ -224,6 +224,6 @@ UNKNOWN
 11. 创建和修改工作流时只能操作未锁定草稿，并保留作者、原因和修订号。
 12. 修改设备供给物料状态时必须使用物理资源接口，不能直接改写设备内部数据库。
 
-调用方始终通过服务端的 `agent/*` 方法访问设备智能体。智能体内部部署方式不得改变 ALP 对外数据结构。
+调用方始终通过服务端的 `agent/*` 方法访问设备智能体。智能体内部部署方式不得改变 ALL 对外数据结构。
 
 ---

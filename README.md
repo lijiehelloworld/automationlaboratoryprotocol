@@ -1,6 +1,6 @@
-# Automation Laboratory Protocol
+# Automation Laboratory Language
 
-Automation Laboratory Protocol（ALP，自动化实验室协议）规范文档。
+Automation Laboratory Language（ALL，自动化实验室语言）规范文档。
 
 ## 本地预览
 

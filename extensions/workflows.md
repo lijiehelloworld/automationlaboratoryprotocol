@@ -200,7 +200,7 @@ script
   "step_id": "calculate_parameters",
   "type": "script",
   "script": {
-    "resource_uri": "alp://device-001/scripts/calculate_parameters.py",
+    "resource_uri": "all://device-001/scripts/calculate_parameters.py",
     "digest": "sha256:script-example",
     "runtime": "python",
     "entrypoint": "calculate",
@@ -210,7 +210,7 @@ script
     "permissions": {
       "network": false,
       "device_actions": [],
-      "resource_read": ["alp://device-001/config/*"]
+      "resource_read": ["all://device-001/config/*"]
     },
     "timeout_ms": 5000
   }
