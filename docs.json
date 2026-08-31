@@ -1,0 +1,165 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Automation Laboratory Protocol",
+  "description": "Automation Laboratory Protocol (ALP) specification",
+  "colors": {
+    "primary": "#155EEF",
+    "light": "#2E90FA",
+    "dark": "#004EEB"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "文档",
+        "groups": [
+          {
+            "group": "概览",
+            "pages": [
+              "index",
+              "quickstart",
+              "faq"
+            ]
+          },
+          {
+            "group": "总体设计",
+            "pages": [
+              "architecture/overview",
+              "architecture/terms"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "规范",
+        "groups": [
+          {
+            "group": "规范总览",
+            "pages": [
+              "specification/overview",
+              "specification/protocol-contract"
+            ]
+          },
+          {
+            "group": "基础协议",
+            "pages": [
+              "specification/base-protocol",
+              "specification/client-features"
+            ]
+          },
+          {
+            "group": "核心能力",
+            "pages": [
+              "specification/devices",
+              "specification/properties",
+              "specification/actions",
+              "specification/physical-resources"
+            ]
+          },
+          {
+            "group": "协议工具",
+            "pages": [
+              "specification/utilities",
+              "specification/security-and-safety",
+              "specification/conformance"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "扩展",
+        "groups": [
+          {
+            "group": "扩展机制",
+            "pages": [
+              "extensions/overview",
+              "extensions/negotiation"
+            ]
+          },
+          {
+            "group": "标准扩展",
+            "pages": [
+              "extensions/workflows",
+              "extensions/resources",
+              "extensions/device-agent"
+            ]
+          },
+          {
+            "group": "非规范性示例",
+            "pages": [
+              "examples/liquid-sampling"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "注册中心",
+        "groups": [
+          {
+            "group": "注册中心",
+            "pages": [
+              "registry/about",
+              "registry/quickstart",
+              "registry/faq"
+            ]
+          },
+          {
+            "group": "发布",
+            "pages": [
+              "registry/publishing/metadata",
+              "registry/publishing/authentication",
+              "registry/publishing/versioning"
+            ]
+          },
+          {
+            "group": "使用",
+            "pages": [
+              "registry/consuming/discovery",
+              "registry/consuming/trust-and-security"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "改进提案",
+        "groups": [
+          {
+            "group": "提案流程",
+            "pages": [
+              "proposals/about",
+              "proposals/process",
+              "proposals/template"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "社区",
+        "groups": [
+          {
+            "group": "参与社区",
+            "pages": [
+              "community/overview",
+              "community/contributing",
+              "community/governance",
+              "community/code-of-conduct"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/lijiehelloworld/automationlaboratoryprotocol"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/lijiehelloworld/automationlaboratoryprotocol"
+    }
+  }
+}
