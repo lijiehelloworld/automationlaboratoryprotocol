@@ -1,4 +1,7 @@
-# 属性
+---
+title: "属性"
+description: "属性定义以及 read 和 write 接口"
+---
 
 Property 表示设备、工作区、对象、样品或环境中的一个状态值。
 

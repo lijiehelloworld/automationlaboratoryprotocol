@@ -1,4 +1,7 @@
-# 设备与能力发现
+---
+title: "设备与能力发现"
+description: "服务发现、设备清单与设备模型"
+---
 
 #### `server/discover`
 

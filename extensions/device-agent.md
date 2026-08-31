@@ -1,4 +1,7 @@
-# 设备智能体
+---
+title: "设备智能体"
+description: "可选单设备智能体的定义、方法和安全边界"
+---
 
 每个 Device Manifest MUST 保留 `device_agent` 字段。供应商可以随设备提供单设备智能体，也可以由部署方接入；未提供时字段值 MUST 为 `null`。
 
