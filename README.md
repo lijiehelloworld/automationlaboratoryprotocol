@@ -2,6 +2,8 @@
 
 Automation Laboratory Language（ALL，自动化实验室语言）规范文档。
 
+ALL 使用 OAuth 2.1 授权的 HTTPS 远程连接，只定义系统、对象、操作和 Workflow 四个协议模块。
+
 ## 本地预览
 
 安装 Node.js 20 或更高版本，然后在仓库根目录运行：

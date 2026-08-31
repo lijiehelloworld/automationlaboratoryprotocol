@@ -1,65 +1,122 @@
 ---
 title: "符合性"
-description: "ALL 实现符合性等级和必需检查"
+description: "ALL 四模块实现要求和检查清单"
 ---
 
-## 符合性等级
+## 符合性声明
 
-| 等级 | 必须实现 |
-| --- | --- |
-| `ALL-Core` | 日期版本、消息、发现、`devices/get_manifest`、`read`、数据结构定义、错误和安全基础 |
-| `ALL-Control` | `write` 或 `invoke`、数据结构定义、前置条件、约束、执行锁、试运行和审计 |
-| `ALL-PhysicalResources` | `PhysicalResource`、`WorkObject`、`DeviceSupply` 数据结构定义，统一查询、登记、修改、状态事件及专用操作 |
-| `ALL-Transfers` | 本设备边界的 `prepare/confirm/get/cancel`、交接点和物理资源位置更新 |
-| `ALL-Workflow` | `workflows/validate/run`、模板摘要、结果和审计 |
-| `ALL-Resources` | `resources/list/read`、URI 和 MIME 类型 |
-| `ALL-Operations` | `operations/get`；需要中途输入时实现 `respond`，支持安全取消时实现 `cancel` |
-| `ALL-Events` | `events/subscribe/poll/unsubscribe`、主题过滤、游标续读、重复投递去重和过期恢复 |
-| `ALL-DeviceAgent` | 单逻辑智能体、`agent/describe/invoke`、计划模式、最小权限和受控执行 |
+实现必须声明：
 
-要求：
+```json
+{
+  "protocol_version": "2026-08-31",
+  "transport": "https",
+  "authentication": "oauth2.1",
+  "modules": {
+    "system": true,
+    "objects": true,
+    "operations": true,
+    "workflows": true
+  }
+}
+```
 
-- 所有设备必须达到 `ALL-Core`。
-- 只读设备可以只实现 `ALL-Core`。
-- 改变物理状态的设备必须达到 `ALL-Control`；工作流是独立可选等级。
-- 管理作业对象或设备供给物料的设备必须达到 `ALL-PhysicalResources`。
-- 接受物理资源进出的设备必须达到 `ALL-Transfers`。
-- 设备供给物料管理不要求实现采购、仓储或供应链系统。
-- 声明工作流能力的设备必须达到 `ALL-Workflow`；未声明时普通 `read/write/invoke` 仍须独立可用。
-- 声明 `events=true` 的服务端必须达到 `ALL-Events`；仅支持 HTTP 时至少提供 `poll` 交付模式。
-- `device_agent` 字段必须保留，能力本身可以不提供。
-- 组合设备必须声明成员设备、成员角色、统一状态修订号和物理执行锁所有权。
-- 不支持的可选能力必须从能力声明中省略。
+`system` 和 `operations` 为必需模块。没有作业对象的只读设备可以声明 `objects=false`；不提供模板的设备可以声明 `workflows=false`。
 
-## 必需检查
+## 系统模块
 
-一致性检查至少包括：
+所有实现必须：
 
-1. `server/discover` 中每个设备都能通过 `devices/get_manifest` 取得一致能力清单，且其中每个属性都能读取或返回规范错误。
-2. 每个动作都有输入和输出数据结构定义，并对应真实、已登记的可执行实现。
-3. 未知参数在 `additionalProperties=false` 时被拒绝。
-4. 试运行不产生设备写操作。
-5. 过期修订号在执行锁内被拒绝。
-6. 同一执行互斥域内的冲突物理动作不能并发进入底层设备执行。
-7. 明确失败、超时和结果未知可以区分。
-8. `required`、`recommended` 和 `none` 三种结果确认策略按定义处理，软件推导证据不会被标记为 `confirmed`。
-9. 请求正文不能伪造权限。
-10. 物理资源的稳定 `id`、`kind`、位置、包含关系和修订号保持一致，容器不形成第三种资源类别。
-11. 组合设备的成员标识、成员角色与实际执行边界一致。
-12. 设备供给物料的登记、补充、替换、安装和卸载检查权限、幂等键与修订号，并记录修改主体、原因、旧值和新值。
-13. 外部设备供给物料在交接确认前不能被标记为已安装或已移除。
-14. 交接准备不改变最终位置；交接确认原子更新位置、关系、占用和修订号。
-15. 交接结果不确定时相关物理资源进入 `unknown`，依赖其位置的动作被拒绝。
-16. 未声明工作流时设备仍可通过核心接口运行；声明后，工作流校验不移动设备。
-17. 工作流运行绑定模板版本、修订号、摘要和启动设备修订号。
-18. 人工锁定的工作流拒绝程序和设备智能体修改。
-19. 设备智能体权限不超过调用者、智能体声明和本次授权三者交集。
-20. 设备智能体不可用时，普通设备接口仍然可用。
-21. 目录结果确定性排序并返回缓存提示；动态状态不进入共享缓存。
-22. 每个请求自带版本和能力，未知扩展不会改变核心语义。
-23. 流中断后不会自动重放非幂等动作。
-24. 跨设备物理资源运输不被错误地当作本设备的协议事务。
-25. 事件可按 `event_id` 去重和续读；游标过期会要求重新读取快照，而不是静默漏报。
-26. 符合性测试不依赖服务端的内部模块、驱动 ABI、数据库或部署拓扑。
+- 只提供 HTTPS 远程端点；
+- 发布 OAuth 受保护资源元数据；
+- 验证访问令牌发行方、受众、有效期和权限；
+- 实现 `system/discover`、`system/get_manifest` 和 `system/get_status`；
+- 返回四模块结构的能力清单；
+- 支持明确协议版本和无会话请求；
+- 对目录提供稳定顺序、修订号和私有缓存提示；
+- 使用结构化错误；
+- 对改变状态的请求保存审计记录。
 
----
+声明事件能力时必须同时实现：
+
+```text
+system/events/subscribe
+system/events/poll
+system/events/unsubscribe
+```
+
+## 对象模块
+
+声明 `objects=true` 时必须：
+
+- 只使用 `WorkObject` 对象模型；
+- 发布完整对象类型定义；
+- 实现 `objects/list` 和 `objects/get`；
+- 明确是否支持 `objects/register` 和 `objects/update`；
+- 强制对象数据结构、位置、包含关系和修订号；
+- 禁止用对象更新接口伪造物理动作；
+- 对不存在和不可见对象使用不泄露信息的错误语义。
+
+## 操作模块
+
+所有实现必须：
+
+- 实现 `operations/list` 和 `operations/read`；
+- 为每个操作声明种类、数据结构、权限、对象角色、前置条件、效果和执行属性；
+- 只允许调用能力清单中的操作；
+- 在物理执行前完成完整校验和锁内复验；
+- 区分成功、失败和未知结果；
+- 对非幂等操作禁止盲目重放。
+
+声明写入或调用时实现相应接口：
+
+```text
+operations/write
+operations/invoke
+```
+
+可能返回长任务时必须实现 `operations/get`；可能请求输入时必须实现 `operations/respond`；声明可安全取消时必须实现 `operations/cancel`。
+
+## Workflow 模块
+
+声明 `workflows=true` 时必须且只能公开以下标准 Workflow 接口：
+
+```text
+workflows/list
+workflows/get
+workflows/validate
+workflows/run
+```
+
+实现必须：
+
+- 以 `name + version + digest` 固定模板；
+- 只允许 `operation`、`assert` 和 `wait` 步骤；
+- 验证全部内部操作和对象引用；
+- 计算并执行权限范围并集；
+- 在运行时重新校验状态、对象和前置条件；
+- 保存逐步审计结果；
+- 在未知物理结果后停止后续物理步骤。
+
+## 必需测试
+
+符合性测试至少覆盖：
+
+1. 缺少、过期、错误发行方和错误受众令牌；
+2. 权限不足和权限范围提示；
+3. 协议版本不支持及头部正文冲突；
+4. `system/discover` 和能力清单缓存复验；
+5. 四模块之外的方法拒绝；
+6. 对象数据结构、关系、修订号和并发冲突；
+7. 操作参数、对象角色、前置条件和锁竞争；
+8. `dry_run` 不接触物理设备；
+9. 同步成功、明确失败和结果未知；
+10. 长任务查询、输入响应和安全取消；
+11. Workflow 固定摘要、校验句柄过期和步骤错误；
+12. 事件至少一次投递、游标续读和过期恢复；
+13. 日志和错误中不泄露凭据或隐藏资源；
+14. 连接中断后非幂等操作不被自动重放。
+
+## 判定边界
+
+符合性只根据远程可观察行为判断。内部驱动、数据库、队列、程序语言、设备 SDK 和部署方式不影响符合性，只要它们不能绕过 ALL 的权限、安全、状态和审计要求。

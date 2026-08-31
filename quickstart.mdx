@@ -6,20 +6,23 @@ description: "ALL 调用方的最短接入流程"
 调用方集成 ALL 客户端能力后，按以下顺序与 ALL 服务端交互。
 
 <Steps>
-  <Step title="发现服务">
-    调用 `server/discover`，确认协议版本、服务身份、可用设备和扩展能力。
+  <Step title="发现授权服务器">
+    读取 OAuth 受保护资源元数据，选择可信授权服务器并取得适用于 ALL 资源的访问令牌。
   </Step>
-  <Step title="获取设备清单">
-    调用 `devices/get_manifest`，取得设备属性、动作、物理资源类型和可选能力声明。
+  <Step title="发现系统">
+    调用 `system/discover`，确认协议版本、可见设备和四模块支持状态。
   </Step>
-  <Step title="读取当前状态">
-    使用 `read` 获取所需属性和状态，并保存返回的 `revision`。
+  <Step title="获取能力清单">
+    调用 `system/get_manifest`，取得对象类型、操作定义、Workflow 定义和所需权限。
   </Step>
-  <Step title="提交改变">
-    修改状态时使用 `write`；执行动作时使用 `invoke`。涉及并发状态时携带预期 `revision`，可重试请求携带幂等键。
+  <Step title="读取状态和对象">
+    使用 `system/get_status`、`objects/list`、`objects/get` 或 `operations/read` 获取当前事实并保存修订号。
   </Step>
-  <Step title="跟踪结果">
-    同步请求直接读取结果；异步请求通过操作资源或事件订阅跟踪状态、结果和执行证据。
+  <Step title="执行操作或 Workflow">
+    使用 `operations/write`、`operations/invoke` 或 `workflows/run`；运行前携带期望修订号并遵守数据结构和权限要求。
+  </Step>
+  <Step title="跟踪长任务">
+    返回 `resultType=operation` 时使用 `operations/get` 查询，必要时调用 `operations/respond` 或 `operations/cancel`。
   </Step>
 </Steps>
 
@@ -27,4 +30,4 @@ description: "ALL 调用方的最短接入流程"
 调用方必须根据能力清单中的数据结构定义、约束和安全声明构造请求，不得根据设备名称猜测能力。
 </Warning>
 
-下一步阅读[协议契约](/specification/protocol-contract)和[基础协议](/specification/base-protocol)。
+下一步阅读[身份认证与授权](/specification/authentication)和[系统](/specification/system)。

@@ -35,60 +35,43 @@
         "tab": "规范",
         "groups": [
           {
-            "group": "协议概览",
+            "group": "协议基础",
             "pages": [
               "specification/overview",
-              "specification/protocol-contract"
-            ]
-          },
-          {
-            "group": "通信基础",
-            "pages": [
               "specification/base-protocol",
-              "specification/client-features"
+              "specification/authentication"
             ]
           },
           {
-            "group": "核心能力",
+            "group": "系统",
             "pages": [
-              "specification/devices",
-              "specification/properties",
-              "specification/actions",
-              "specification/physical-resources"
+              "specification/system"
             ]
           },
           {
-            "group": "运行保障",
+            "group": "对象",
             "pages": [
-              "specification/utilities",
+              "specification/objects"
+            ]
+          },
+          {
+            "group": "操作",
+            "pages": [
+              "specification/operations"
+            ]
+          },
+          {
+            "group": "Workflow",
+            "pages": [
+              "specification/workflows"
+            ]
+          },
+          {
+            "group": "保障与符合性",
+            "pages": [
+              "specification/errors",
               "specification/security-and-safety",
               "specification/conformance"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "扩展",
-        "groups": [
-          {
-            "group": "扩展机制",
-            "pages": [
-              "extensions/overview",
-              "extensions/negotiation"
-            ]
-          },
-          {
-            "group": "标准扩展",
-            "pages": [
-              "extensions/workflows",
-              "extensions/resources",
-              "extensions/device-agent"
-            ]
-          },
-          {
-            "group": "非规范性示例",
-            "pages": [
-              "examples/liquid-sampling"
             ]
           }
         ]

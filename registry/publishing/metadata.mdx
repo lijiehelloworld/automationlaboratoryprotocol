@@ -18,14 +18,16 @@ description: "all-server.json 的结构和字段"
   },
   "connections": [
     {
-      "type": "http",
-      "url": "https://example.org/alp"
+      "type": "https",
+      "url": "https://example.org/all",
+      "protected_resource_metadata": "https://example.org/.well-known/oauth-protected-resource"
     }
   ],
   "capabilities": {
-    "read": true,
-    "write": true,
-    "invoke": true
+    "system": true,
+    "objects": true,
+    "operations": true,
+    "workflows": true
   }
 }
 ```
@@ -39,6 +41,6 @@ description: "all-server.json 的结构和字段"
 | `version` | 本条记录所描述的服务版本。 |
 | `protocol_versions` | 服务声明支持的 ALL 协议版本。 |
 | `publisher.namespace` | 已验证的发布者命名空间。 |
-| `connections` | 至少一种可解析的连接方式。 |
+| `connections` | 至少一个 HTTPS ALL 端点及其 OAuth 受保护资源元数据地址。 |
 
-能力摘要只用于检索。调用方必须以实时 `server/discover` 和设备能力清单为最终依据。
+能力摘要只用于检索。调用方必须以实时 `system/discover` 和 `system/get_manifest` 为最终依据。
