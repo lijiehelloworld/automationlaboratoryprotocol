@@ -5,7 +5,7 @@ description: "长任务、执行证据与结构化错误"
 
 ## 操作
 
-动作无法在普通请求时限内完成时，Server 返回：
+动作无法在普通请求时限内完成时，服务端返回：
 
 ```json
 {
@@ -23,10 +23,10 @@ description: "长任务、执行证据与结构化错误"
 }
 ```
 
-支持长任务的实现 MUST 提供：
+支持长任务的实现必须提供：
 
 - `operations/get`
-- `operations/respond`，仅当 Operation 可能进入 `INPUT_REQUIRED` 时必须提供
+- `operations/respond`，仅当操作任务可能进入 `INPUT_REQUIRED` 时必须提供
 - `operations/cancel`，仅当设备可以安全取消时提供
 
 状态：
@@ -41,7 +41,7 @@ CANCELLED
 UNKNOWN
 ```
 
-Operation 进入 `INPUT_REQUIRED` 时，`operations/get` MUST 返回 `inputRequests` 和不透明 `requestState`。Client 使用下列方法补充输入：
+操作任务进入 `INPUT_REQUIRED` 时，`operations/get` 必须返回 `inputRequests` 和不透明 `requestState`。客户端使用下列方法补充输入：
 
 ```json
 {
@@ -59,13 +59,13 @@ Operation 进入 `INPUT_REQUIRED` 时，`operations/get` MUST 返回 `inputReque
 }
 ```
 
-Server MUST 重新验证调用身份、授权、`requestState`、Operation revision、设备状态和截止时间，再决定继续、再次请求输入或结束 Operation。
+服务端必须重新验证调用身份、授权、`requestState`、操作任务修订号、设备状态和截止时间，再决定继续、再次请求输入或结束操作任务。
 
-取消是协作式动作。收到取消请求不等于设备已经安全停止，最终状态 MUST 通过查询或设备回读确认。
+取消是协作式动作。收到取消请求不等于设备已经安全停止，最终状态必须通过查询或设备回读确认。
 
 ## 执行证据
 
-Evidence 说明 Server 根据什么判断状态或动作结果。
+证据说明服务端根据什么判断状态或动作结果。
 
 | 来源 | 典型证据 | 最高质量 |
 | --- | --- | --- |
@@ -88,17 +88,17 @@ Evidence 说明 Server 根据什么判断状态或动作结果。
 }
 ```
 
-软件推导值 MUST NOT 标记为设备回读。关联图像或文件时 MUST 使用资源 URI，不得返回 Server 本机路径。
+软件推导值不得标记为设备回读。关联图像或文件时必须使用资源 URI，不得返回服务端本机路径。
 
 ## 错误
 
 解析、方法和参数错误使用标准 JSON-RPC 错误。ALP 应用错误：
 
-- 在物理执行开始前发现的拒绝、权限、Schema、前置条件和并发错误使用 JSON-RPC `error`。
-- 一旦物理执行已经开始，Server MUST 返回普通 `result`，使用 `outcome=failed` 或 `outcome=unknown`，并在结果内保留同结构的错误、revision 和 Evidence。
-- Server 不得用缺少结果正文的连接关闭来表示动作失败；连接关闭只能表示结果未知。
+- 在物理执行开始前发现的拒绝、权限、数据结构定义、前置条件和并发错误使用 JSON-RPC `error`。
+- 一旦物理执行已经开始，服务端必须返回普通 `result`，使用 `outcome=failed` 或 `outcome=unknown`，并在结果内保留同结构的错误、修订号和证据。
+- 服务端不得用缺少结果正文的连接关闭来表示动作失败；连接关闭只能表示结果未知。
 
-| Code | Name | 说明 |
+| 编码 | 名称 | 说明 |
 | --- | --- | --- |
 | `-32050` | `UnsupportedProtocolVersion` | 不支持请求版本 |
 | `-32051` | `HeaderMismatch` | 头部和正文不一致 |
@@ -107,7 +107,7 @@ Evidence 说明 Server 根据什么判断状态或动作结果。
 | `-32054` | `PermissionDenied` | 已验证身份没有权限 |
 | `-32055` | `PreconditionFailed` | 当前状态不允许执行 |
 | `-32056` | `ConstraintViolation` | 参数或物理限制被违反 |
-| `-32057` | `RevisionConflict` | 状态 revision 已变化 |
+| `-32057` | `RevisionConflict` | 状态修订号已变化 |
 | `-32058` | `StaleState` | 必需状态已过期 |
 | `-32059` | `DeviceBusy` | 设备被其他动作占用 |
 | `-32060` | `DeviceExecutionError` | 底层设备执行明确失败 |

@@ -3,9 +3,9 @@ title: "工作流"
 description: "工作流类型、模板、步骤和协议方法"
 ---
 
-Workflow 是设备可选能力。设备可以不提供 Workflow；此时 Manifest 中 `workflows=[]`，能力声明为不支持。提供 Workflow 的设备可以包含供应商内置模板，也可以允许上位机操作员或单设备智能体创建、修改和提交模板。
+工作流是设备可选能力。设备可以不提供工作流；此时能力清单中 `workflows=[]`，能力声明为不支持。提供工作流的设备可以包含供应商内置模板，也可以允许上位机操作员或单设备智能体创建、修改和提交模板。
 
-Workflow 是可检查、可版本化、可锁定的流程定义，不能绕过单步 Action 的权限和安全约束。
+工作流是可检查、可版本化、可锁定的流程定义，不能绕过单步动作的权限和安全约束。
 
 ## 工作流类型
 
@@ -15,14 +15,14 @@ Workflow 是可检查、可版本化、可锁定的流程定义，不能绕过�
 | `operator` | 操作员通过上位机创建或修改 | 按授权提交或批准；只有最高人工角色可以锁定 |
 | `device_agent` | 单设备智能体创建或修改 | 只能在授权范围内提交，不能越过人工锁 |
 
-支持 Workflow 的设备 SHOULD 提供与其能力相符的基础模板：
+支持工作流的设备应当提供与其能力相符的基础模板：
 
 - 只读传感器：`observe_and_record`；
 - 可操作设备：`initialize`、`basic_operation` 或真实核心流程；
 - 支持安全停机的设备：`safe_shutdown`；
 - 需要装载对象的设备：装载确认、运行和卸载清理流程。
 
-Workflow 生命周期：
+工作流生命周期：
 
 ```text
 draft → submitted → approved → locked → deprecated
@@ -30,11 +30,11 @@ draft → submitted → approved → locked → deprecated
 
 - `draft`：作者可继续修改。
 - `submitted`：等待具有审批权限的人确认。
-- `approved`：可以执行，但仍可按权限修改并产生新 revision。
+- `approved`：可以执行，但仍可按权限修改并产生新修订号。
 - `locked`：人工最高权限锁定，任何程序和设备智能体都不能修改。
 - `deprecated`：保留历史和审计，但禁止启动新的运行。
 
-Server MUST NOT 暴露实际无法执行的伪 Workflow。
+服务端不得暴露实际无法执行的伪工作流。
 
 ## 工作流模板
 
@@ -187,11 +187,11 @@ subworkflow
 script
 ```
 
-- `wait` MUST 有明确条件和超时。
+- `wait` 必须有明确条件和超时。
 - `assert` 只能检查已声明状态和前序输出。
 - `input` 不能替代安全联锁。
-- `subworkflow` MUST 固定名称和版本。
-- `script` MUST 引用已登记资源，不能在 Workflow 中直接嵌入任意代码。
+- `subworkflow` 必须固定名称和版本。
+- `script` 必须引用已登记资源，不能在工作流中直接嵌入任意代码。
 
 脚本步骤：
 
@@ -217,18 +217,18 @@ script
 }
 ```
 
-脚本 MUST：
+脚本必须：
 
 - 绑定不可变内容摘要；
 - 声明运行时、入口、参数、权限和超时；
 - 在隔离环境运行；
 - 禁止直接访问串口、寄存器、私有控制接口和未声明网络；
 - 通过返回结构化输出影响后续步骤；
-- 如需设备动作，仍调用已声明的 `invoke`，不能在脚本内绕过 Server。
+- 如需设备动作，仍调用已声明的 `invoke`，不能在脚本内绕过服务端。
 
 ## 工作流方法
 
-声明 Workflow 能力的设备 MUST 实现：
+声明工作流能力的设备必须实现：
 
 - `workflows/list`
 - `workflows/get`
@@ -242,9 +242,9 @@ script
 - `workflows/unlock`
 - `workflows/deprecate`
 
-##### Workflow Editing
+##### 工作流编辑
 
-`workflows/create` 和 `workflows/update` MUST 接受完整模板或字段掩码，并使用模板级 `expected_revision` 防止覆盖他人修改。
+`workflows/create` 和 `workflows/update` 必须接受完整模板或字段掩码，并使用模板级 `expected_revision` 防止覆盖他人修改。
 
 ```json
 {
@@ -270,11 +270,11 @@ script
 
 权限规则：
 
-- 上位机操作员可以在授权范围内创建、修改和提交 Workflow。
+- 上位机操作员可以在授权范围内创建、修改和提交工作流。
 - 单设备智能体可以在授权范围内创建、修改和提交 `draft`，但不能自行批准高风险模板。
 - 只有具有人工最高权限的主体可以执行 `workflows/lock` 和 `workflows/unlock`。
-- `locked=true` 后，Server MUST 拒绝来自上位机程序、普通操作员和设备智能体的所有模板修改。
-- 解锁、重新锁定、批准和弃用 MUST 进入审计记录。
+- `locked=true` 后，服务端必须拒绝来自上位机程序、普通操作员和设备智能体的所有模板修改。
+- 解锁、重新锁定、批准和弃用必须进入审计记录。
 - 已启动的运行始终绑定启动时的 `version + revision + template_digest`，后续编辑不得改变运行中实例。
 
 ##### `workflows/validate`
@@ -316,7 +316,7 @@ script
 }
 ```
 
-校验 MUST NOT 移动设备或发送写命令。
+校验不得移动设备或发送写命令。
 
 ##### `workflows/run`
 
@@ -345,6 +345,6 @@ script
 }
 ```
 
-`workflows/run` MUST 复用普通 `write`、`invoke`、统一执行锁、Evidence 和审计路径。
+`workflows/run` 必须复用普通 `write`、`invoke`、统一执行锁、证据和审计路径。
 
-`name + version + template_digest` 唯一确定一个模板。任何步骤、参数、安全语义或效果变化 MUST 更新版本和摘要。
+`name + version + template_digest` 唯一确定一个模板。任何步骤、参数、安全语义或效果变化必须更新版本和摘要。

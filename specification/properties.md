@@ -1,9 +1,9 @@
 ---
 title: "属性"
-description: "属性定义以及 read 和 write 接口"
+description: "属性定义以及读取和写入接口"
 ---
 
-Property 表示设备、工作区、对象、样品或环境中的一个状态值。
+属性表示设备、工作区、对象、样品或环境中的一个状态值。
 
 ## 属性定义
 
@@ -24,7 +24,7 @@ Property 表示设备、工作区、对象、样品或环境中的一个状态�
 }
 ```
 
-状态路径 SHOULD 使用以下命名空间：
+状态路径应当使用以下命名空间：
 
 ```text
 device.*
@@ -96,11 +96,11 @@ operator_confirmed
 software_derived
 ```
 
-`read` 默认 MUST NOT 移动物理执行机构。确实需要移动硬件才能获得的观测必须定义为 Action，并通过 `invoke` 执行。
+`read` 默认不得移动物理执行机构。确实需要移动硬件才能获得的观测必须定义为动作，并通过 `invoke` 执行。
 
 #### `write`
 
-`write` 修改单一可写状态或执行简单原子写入。包含多个物理步骤或多个状态效果的动作 MUST 使用 `invoke`。
+`write` 修改单一可写状态或执行简单原子写入。包含多个物理步骤或多个状态效果的动作必须使用 `invoke`。
 
 ```json
 {
@@ -132,13 +132,13 @@ software_derived
 }
 ```
 
-Physical Resource 跨越设备边界时 MUST 使用 `transfers/prepare` 和 `transfers/confirm`，不得通过通用 `write` 直接伪造其位置或安装状态。
+物理资源跨越设备边界时必须使用 `transfers/prepare` 和 `transfers/confirm`，不得通过通用 `write` 直接伪造其位置或安装状态。
 
-Server MUST：
+服务端必须：
 
 - 校验属性是否可写；
-- 校验输入 Schema、权限、截止时间和约束；
+- 校验输入数据结构定义、权限、截止时间和约束；
 - 在执行锁内比较 `expected_revision`；
 - 在 `dry_run=true` 时禁止发送设备写命令；
-- 只在明确成功后更新状态和 revision；
+- 只在明确成功后更新状态和修订号；
 - 在物理结果未知时返回 `unknown`。

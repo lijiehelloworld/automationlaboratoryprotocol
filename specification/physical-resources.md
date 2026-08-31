@@ -1,26 +1,26 @@
 ---
 title: "物理资源"
-description: "作业对象、设备供给物料及物理资源转移规范"
+description: "作业对象、设备供给物料及物理资源交接规范"
 ---
 
-Physical Resource（物理资源）统一表示与设备实际运行有关的物理实体。协议只定义两个互斥的顶层类别：
+物理资源统一表示与设备实际运行有关的物理实体。协议只定义两个互斥的顶层类别：
 
 ```text
-Physical Resource
-├─ Work Object      作业对象
-└─ Device Supply    设备供给物料
+物理资源
+├─ 作业对象
+└─ 设备供给物料
 ```
 
 | 类别 | `kind` | 定义 |
 | --- | --- | --- |
-| Work Object | `work_object` | 设备直接操作、处理、检查、测量、表征或测试的物理实体 |
-| Device Supply | `device_supply` | 设备运行中会被消耗、损耗、排出、替换或需要补充的物料和物品 |
+| 作业对象 | `work_object` | 设备直接操作、处理、检查、测量、表征或测试的物理实体 |
+| 设备供给物料 | `device_supply` | 设备运行中会被消耗、损耗、排出、替换或需要补充的物料和物品 |
 
-Container 不构成第三个顶层类别。设备直接操作容器时，该容器是 `WorkObject`；容器只承担容纳作用时，通过子对象的 `contained_in` 和 `position` 表达包含关系及内部位置。
+容器不构成第三个顶层类别。设备直接操作容器时，该容器是 `WorkObject`；容器只承担容纳作用时，通过子对象的 `contained_in` 和 `position` 表达包含关系及内部位置。
 
-## 通用 Schema
+## 通用数据结构定义
 
-所有物理资源 MUST 使用统一身份、状态、位置、修订号和时间字段，并根据 `kind` 选择专用 Schema：
+所有物理资源必须使用统一身份、状态、位置、修订号和时间字段，并根据 `kind` 选择专用数据结构定义：
 
 ```typescript
 type PhysicalResourceKind = "work_object" | "device_supply";
@@ -87,7 +87,7 @@ type NewPhysicalResource =
   | Omit<DeviceSupply, "revision" | "created_at" | "updated_at">;
 ```
 
-规范实现 MUST 使用以下 JSON Schema 判别联合或与其等价的约束；`kind` 是判别字段，且不得出现第三种值：
+规范实现必须使用以下 JSON 数据结构定义判别联合或与其等价的约束；`kind` 是判别字段，且不得出现第三种值：
 
 ```json
 {
@@ -208,18 +208,18 @@ type NewPhysicalResource =
 
 公共字段规则：
 
-- `id` MUST 在当前 Device Node 内稳定且唯一，不能仅使用数组位置表示身份；
-- `kind` MUST 只能是 `work_object` 或 `device_supply`；
-- `type` MUST 引用 Manifest 中的 `physical_resource_types` 定义；
-- `state` MUST 符合对应资源类型声明的 `state_schema`；
-- `location` MUST 表示设备边界、工作区、包含关系和位置质量；
-- `metadata` MAY 保存非控制性扩展信息，不得覆盖规范字段语义；
-- `revision` MUST 在资源事实变化时单调递增；
-- `created_at` 和 `updated_at` MUST 使用 RFC 3339 时间。
+- `id` 必须在当前设备节点内稳定且唯一，不能仅使用数组位置表示身份；
+- `kind` 必须只能是 `work_object` 或 `device_supply`；
+- `type` 必须引用能力清单中的 `physical_resource_types` 定义；
+- `state` 必须符合对应资源类型声明的 `state_schema`；
+- `location` 必须表示设备边界、工作区、包含关系和位置质量；
+- `metadata` 可以保存非控制性扩展信息，不得覆盖规范字段语义；
+- `revision` 必须在资源事实变化时单调递增；
+- `created_at` 和 `updated_at` 必须使用 RFC 3339 时间。
 
 ## 资源类型定义
 
-Manifest 中的每个资源类型 MUST 至少声明：
+能力清单中的每个资源类型必须至少声明：
 
 ```typescript
 interface PhysicalResourceTypeDefinition {
@@ -234,21 +234,21 @@ interface PhysicalResourceTypeDefinition {
 }
 ```
 
-Work Object 类型 MAY 额外声明容纳能力、允许的子对象类型和位置地址规则。Device Supply 类型 SHOULD 声明计量单位、兼容位置、补充方式、批次要求和消耗影响。
+作业对象类型可以额外声明容纳能力、允许的子对象类型和位置地址规则。设备供给物料类型应当声明计量单位、兼容位置、补充方式、批次要求和消耗影响。
 
 ## 物理资源操作
 
-声明 `physicalResources=true` 的 Server MUST 实现以下统一接口：
+声明 `physicalResources=true` 的服务端必须实现以下统一接口：
 
 | 方法 | 作用 | 修改事实 |
 | --- | --- | --- |
 | `physical_resources/list` | 按 `kind`、`type`、位置或状态列出资源 | 否 |
 | `physical_resources/get` | 按稳定 `id` 读取单个资源 | 否 |
 | `physical_resources/register` | 登记一个新资源事实 | 是 |
-| `physical_resources/update` | 使用字段掩码和 revision 修改允许字段 | 是 |
+| `physical_resources/update` | 使用字段掩码和修订号修改允许字段 | 是 |
 | `events/subscribe` | 以 `physical_resource.changed` 主题订阅资源创建、变化、移动和移除事件 | 否 |
 
-统一操作参数和结果 Schema：
+统一操作参数和结果数据结构定义：
 
 ```typescript
 interface ListPhysicalResourcesParams {
@@ -329,13 +329,13 @@ interface PhysicalResourceChangedEvent {
 }
 ```
 
-`limit` MUST 在 `1..500` 范围内；Server MAY 采用更小的最大值。分页结果 MUST 固定在 `snapshot_revision`，避免调用方在翻页期间把不同资源快照拼接为同一状态。`get` 找不到资源时 MUST 返回 `RESOURCE_NOT_FOUND`。
+`limit` 必须在 `1..500` 范围内；服务端可以采用更小的最大值。分页结果必须固定在 `snapshot_revision`，避免调用方在翻页期间把不同资源快照拼接为同一状态。`get` 找不到资源时必须返回 `RESOURCE_NOT_FOUND`。
 
-`register` 遇到已存在的 `id` 时，只有相同调用身份、相同 `idempotency_key` 和相同请求摘要才能返回原结果；其他情况 MUST 返回 `RESOURCE_ID_CONFLICT`。Server 负责填写 `revision`、`created_at` 和 `updated_at`。
+`register` 遇到已存在的 `id` 时，只有相同调用身份、相同 `idempotency_key` 和相同请求摘要才能返回原结果；其他情况必须返回 `RESOURCE_ID_CONFLICT`。服务端负责填写 `revision`、`created_at` 和 `updated_at`。
 
-`events/subscribe` 使用 Base Protocol 定义的统一事件接口，过滤条件放入 `filters`。事件传输断开后，Client SHOULD 使用最后确认的 `event_id` 调用 `events/poll` 续读；若事件已过期，Server MUST 返回 `EventCursorExpired`，调用方随后重新执行 `physical_resources/list` 获取完整快照并建立新订阅。
+`events/subscribe` 使用基础协议定义的统一事件接口，过滤条件放入 `filters`。事件传输断开后，客户端应当使用最后确认的 `event_id` 调用 `events/poll` 续读；若事件已过期，服务端必须返回 `EventCursorExpired`，调用方随后重新执行 `physical_resources/list` 获取完整快照并建立新订阅。
 
-`physical_resources/list` 和 `physical_resources/get` MUST 返回 `PhysicalResource` 的完整公共字段，并根据 `kind` 返回对应专用字段。调用方不得依赖未在类型 Schema 中声明的字段。
+`physical_resources/list` 和 `physical_resources/get` 必须返回 `PhysicalResource` 的完整公共字段，并根据 `kind` 返回对应专用字段。调用方不得依赖未在类型数据结构定义中声明的字段。
 
 登记请求示例：
 
@@ -368,7 +368,7 @@ interface PhysicalResourceChangedEvent {
 }
 ```
 
-修改请求 MUST 使用字段掩码和乐观并发控制：
+修改请求必须使用字段掩码和乐观并发控制：
 
 ```json
 {
@@ -392,30 +392,30 @@ interface PhysicalResourceChangedEvent {
 }
 ```
 
-`physical_resources/update` MUST NOT 直接修改以下事实：
+`physical_resources/update` 不得直接修改以下事实：
 
 - `id`、`kind`、`type` 和 `created_at`；
-- 未经 Transfer confirm 的跨边界位置；
-- 未经已完成 Action、Workflow 或可信回读证明的设备内部位置；
+- 未经交接确认的跨边界位置；
+- 未经已完成动作、工作流或可信回读证明的设备内部位置；
 - 由设备测量产生但请求方无法验证的状态；
-- 审计记录、Evidence 和其他调用方创建的结果。
+- 审计记录、证据和其他调用方创建的结果。
 
-每次成功登记或修改 MUST 返回旧 revision、新 revision 和变更后的资源。资源变化 MUST 产生事件，事件至少包含 `event_id`、`resource_id`、`kind`、`change_type`、`previous_revision`、`new_revision`、`changed_fields`、`occurred_at` 和可验证的 `actor`。
+每次成功登记或修改必须返回旧修订号、新修订号和变更后的资源。资源变化必须产生事件，事件至少包含 `event_id`、`resource_id`、`kind`、`change_type`、`previous_revision`、`new_revision`、`changed_fields`、`occurred_at` 和可验证的 `actor`。
 
 ## 作业对象操作
 
-Work Object 的位置、包含关系和作业状态必须与真实物理事实一致：
+作业对象的位置、包含关系和作业状态必须与真实物理事实一致：
 
-- 跨越 Device Node 边界 MUST 使用 Physical Resource Transfer 的 `transfers/prepare` 与 `transfers/confirm`；
-- `contained_in` MUST 引用另一个 `WorkObject.id`，不得引用 `DeviceSupply`；
-- `position` MUST 符合父 Work Object 类型声明的位置地址规则；
-- 父 Work Object 移动时，其子对象 MUST 作为同一聚合关系更新；
-- `result_refs` 只能引用已存在的结果或 Evidence；
-- Action 或 Workflow 开始、完成或失败时，Server MUST 原子更新相关 `work_status` 和 revision。
+- 跨越设备节点边界必须使用物理资源交接的 `transfers/prepare` 与 `transfers/confirm`；
+- `contained_in` 必须引用另一个 `WorkObject.id`，不得引用 `DeviceSupply`；
+- `position` 必须符合父作业对象类型声明的位置地址规则；
+- 父作业对象移动时，其子对象必须作为同一聚合关系更新；
+- `result_refs` 只能引用已存在的结果或证据；
+- 动作或工作流开始、完成或失败时，服务端必须原子更新相关 `work_status` 和修订号。
 
 ## 设备供给物料操作
 
-Device Supply 除统一接口外，还定义以下语义操作：
+设备供给物料除统一接口外，还定义以下语义操作：
 
 | 方法 | 作用 |
 | --- | --- |
@@ -478,28 +478,28 @@ interface UninstallDeviceSupplyParams {
 }
 ```
 
-补充请求 MUST 声明 `resource_id`、增加量、单位、`expected_revision`、修改原因和来源。Server MUST 校验单位兼容性、容量上限、批次与有效期要求，并在成功后更新 `quantity`、`supply_status` 和 revision。
+补充请求必须声明 `resource_id`、增加量、单位、`expected_revision`、修改原因和来源。服务端必须校验单位兼容性、容量上限、批次与有效期要求，并在成功后更新 `quantity`、`supply_status` 和修订号。
 
-替换操作 MUST 原子完成以下变化：旧资源进入 `removed` 或适用的终态；新资源以新的稳定 `id` 登记；安装位置只指向新资源；数量、批次、有效期和审计记录同步更新。不得通过覆盖旧资源 `id` 实现替换。
+替换操作必须原子完成以下变化：旧资源进入 `removed` 或适用的终态；新资源以新的稳定 `id` 登记；安装位置只指向新资源；数量、批次、有效期和审计记录同步更新。不得通过覆盖旧资源 `id` 实现替换。
 
-`install` 与 `uninstall` 只确认设备内的安装关系，不替代真实物理交接。Device Supply 从 Device Node 外部进入或离开时，`confirmed_transfer_id` MUST 引用已完成的对应 Transfer；仅在设备内部自动换位且 Server 能提供已完成 Action 或可信回读时 MAY 省略。
+`install` 与 `uninstall` 只确认设备内的安装关系，不替代真实物理交接。设备供给物料从设备节点外部进入或离开时，`confirmed_transfer_id` 必须引用已完成的对应交接；仅在设备内部自动换位且服务端能提供已完成动作或可信回读时可以省略。
 
-四个专用操作都 MUST 返回 `PhysicalResourceMutationResult`，支持幂等键，并在 revision 冲突时返回 `RESOURCE_REVISION_CONFLICT`。数量为负、单位不兼容、超过容量、批次冲突、已过期或位置不兼容时 MUST 拒绝，不得部分更新资源事实。
+四个专用操作都必须返回 `PhysicalResourceMutationResult`，支持幂等键，并在修订号冲突时返回 `RESOURCE_REVISION_CONFLICT`。数量为负、单位不兼容、超过容量、批次冲突、已过期或位置不兼容时必须拒绝，不得部分更新资源事实。
 
-动作和 Workflow SHOULD 声明 `required_device_supplies` 与 `device_supply_effects`。供给物料只在动作结果明确成功后扣减；结果为 `unknown` 时，相关 `quantity.quality` 和 `supply_status` SHOULD 进入 `unknown`，直到可信回读或人工复核。
+动作和工作流应当声明 `required_device_supplies` 与 `device_supply_effects`。供给物料只在动作结果明确成功后扣减；结果为 `unknown` 时，相关 `quantity.quality` 和 `supply_status` 应当进入 `unknown`，直到可信回读或人工复核。
 
 ## 物理资源安全与错误
 
-权限 SHOULD 至少区分：
+权限应当至少区分：
 
 | 权限 | 允许操作 |
 | --- | --- |
 | `physical_resources:read` | `list`、`get` 和事件订阅 |
 | `physical_resources:write` | `register` 与允许字段的 `update` |
-| `physical_resources:transfer` | Physical Resource Transfer |
+| `physical_resources:transfer` | 物理资源交接 |
 | `device_supplies:manage` | `replenish`、`replace`、`install`、`uninstall` |
 
-修改操作 MUST 在同一资源锁或同一设备状态事务中校验权限、Schema、`expected_revision`、位置约束和业务前置条件，并原子提交资源状态、设备状态、事件和审计记录。任何一步失败都不得留下部分更新。
+修改操作必须在同一资源锁或同一设备状态事务中校验权限、数据结构定义、`expected_revision`、位置约束和业务前置条件，并原子提交资源状态、设备状态、事件和审计记录。任何一步失败都不得留下部分更新。
 
 规范错误至少包括：
 
@@ -508,17 +508,17 @@ interface UninstallDeviceSupplyParams {
 | `RESOURCE_NOT_FOUND` | 资源不存在或调用方无权查看 |
 | `RESOURCE_ID_CONFLICT` | 新资源 `id` 已被其他事实占用 |
 | `RESOURCE_KIND_MISMATCH` | `kind` 与类型定义或操作不匹配 |
-| `RESOURCE_TYPE_UNSUPPORTED` | Manifest 未声明该资源类型 |
-| `RESOURCE_SCHEMA_INVALID` | 资源或修改值不符合 Schema |
+| `RESOURCE_TYPE_UNSUPPORTED` | 能力清单未声明该资源类型 |
+| `RESOURCE_SCHEMA_INVALID` | 资源或修改值不符合数据结构定义 |
 | `RESOURCE_REVISION_CONFLICT` | `expected_revision` 已过期 |
 | `RESOURCE_FIELD_IMMUTABLE` | 尝试修改不可变或受保护字段 |
-| `RESOURCE_LOCATION_UNCONFIRMED` | 位置变化缺少 Transfer、Action 或可信回读 |
+| `RESOURCE_LOCATION_UNCONFIRMED` | 位置变化缺少交接、动作或可信回读 |
 | `RESOURCE_RELATION_INVALID` | 包含关系、位置地址或循环关系无效 |
-| `SUPPLY_UNIT_INCOMPATIBLE` | Device Supply 单位不可换算或不兼容 |
+| `SUPPLY_UNIT_INCOMPATIBLE` | 设备供给物料单位不可换算或不兼容 |
 | `SUPPLY_LIMIT_EXCEEDED` | 补充后超过声明容量或限制 |
-| `SUPPLY_NOT_USABLE` | Device Supply 已耗尽、过期、污染或状态未知 |
+| `SUPPLY_NOT_USABLE` | 设备供给物料已耗尽、过期、污染或状态未知 |
 
-同一幂等键重试 MUST 返回原结果；同一键绑定不同请求摘要 MUST 返回冲突。超时发生在物理动作可能已执行之后时，Server MUST 返回 `outcome=unknown`，并将受影响资源状态或质量标记为 `unknown`，不得猜测回滚。
+同一幂等键重试必须返回原结果；同一键绑定不同请求摘要必须返回冲突。超时发生在物理动作可能已执行之后时，服务端必须返回 `outcome=unknown`，并将受影响资源状态或质量标记为 `unknown`，不得猜测回滚。
 
 ## 作业对象类型定义
 
@@ -554,7 +554,7 @@ interface UninstallDeviceSupplyParams {
 
 ## 容器型作业对象
 
-容器不定义新的 `kind`。当设备直接操作容器时，其类型定义 MUST 使用 `kind=work_object`，并通过容纳能力扩展 Work Object Schema。
+容器不定义新的 `kind`。当设备直接操作容器时，其类型定义必须使用 `kind=work_object`，并通过容纳能力扩展作业对象数据结构定义。
 
 ```json
 {
@@ -595,7 +595,7 @@ interface UninstallDeviceSupplyParams {
 }
 ```
 
-Container Definition MUST 声明：
+容器定义必须声明：
 
 - 总容量或槽位容量；
 - 槽位地址规则；
@@ -636,7 +636,7 @@ Container Definition MUST 声明：
 }
 ```
 
-每个运行实例 MUST 具有稳定 `object_id`。对象身份 MUST NOT 仅由数组位置表示。
+每个运行实例必须具有稳定 `object_id`。对象身份不得仅由数组位置表示。
 
 ## 作业对象包含关系
 
@@ -648,7 +648,7 @@ sample_carrier
    └─ ...
 ```
 
-父容器从工作区移除时，其子对象 MUST 同步离开该工作区。Server MUST NOT 继续把子对象标记为已装载。
+父容器从工作区移除时，其子对象必须同步离开该工作区。服务端不得继续把子对象标记为已装载。
 
 内容物通过状态路径读取：
 
@@ -659,11 +659,11 @@ objects.<object_id>.slots.P01.contents.material_id
 objects.<object_id>.closure.state
 ```
 
-领域别名可以存在，但 MUST 指向同一状态事实和同一 revision。
+领域别名可以存在，但必须指向同一状态事实和同一修订号。
 
 ## 作业对象兼容方法别名
 
-规范接口是 `physical_resources/list` 和 `physical_resources/get`。为兼容早期实现，Server MAY 在协商兼容扩展后提供以下别名：
+规范接口是 `physical_resources/list` 和 `physical_resources/get`。为兼容早期实现，服务端可以在协商兼容扩展后提供以下别名：
 
 - `objects/list`
 - `objects/get`
@@ -681,9 +681,9 @@ objects.<object_id>.closure.state
 }
 ```
 
-这些别名默认只读，并且 MUST 返回相同 `id`、位置和 revision，不得建立第二套资源身份。设备工作区内部的抓取、开合和处理 MUST 通过明确的 `write` 或 `invoke` 完成；Work Object 进入或离开 Device Node 边界 MUST 使用 Physical Resource Transfer 接口。
+这些别名默认只读，并且必须返回相同 `id`、位置和修订号，不得建立第二套资源身份。设备工作区内部的抓取、开合和处理必须通过明确的 `write` 或 `invoke` 完成；作业对象进入或离开设备节点边界必须使用物理资源交接接口。
 
-动作引用对象时 SHOULD 使用结构化引用：
+动作引用对象时应当使用结构化引用：
 
 ```json
 {
@@ -702,15 +702,15 @@ objects.<object_id>.closure.state
 }
 ```
 
-Server MUST 在执行锁内再次验证对象位置、类型、状态新鲜度和 revision。
+服务端必须在执行锁内再次验证对象位置、类型、状态新鲜度和修订号。
 
 ## 设备供给物料兼容方法别名
 
-早期 `Consumable` 概念统一映射为 `DeviceSupply`。`consumable_type` MUST 与对应 `DeviceSupply.type` 使用同一标识，`consumable_id` MUST 与对应 `DeviceSupply.id` 使用同一标识。Server 不得为同一实体建立第二套身份、数量或位置关系。
+早期 `Consumable` 概念统一映射为 `DeviceSupply`。`consumable_type` 必须与对应 `DeviceSupply.type` 使用同一标识，`consumable_id` 必须与对应 `DeviceSupply.id` 使用同一标识。服务端不得为同一实体建立第二套身份、数量或位置关系。
 
 ALP 只管理设备当前能够使用或已经装入的耗材，不定义采购、供应商订单、仓库库位、补货预测或完整库存系统。
 
-##### Legacy Consumable Type
+##### 旧版耗材类型
 
 ```json
 {
@@ -750,7 +750,7 @@ ALP 只管理设备当前能够使用或已经装入的耗材，不定义采购�
 
 批次、有效期和最大使用次数是可选字段；设备不需要为了符合协议实现仓储能力。
 
-##### Legacy Consumable Instance
+##### 旧版耗材实例
 
 ```json
 {
@@ -777,11 +777,11 @@ ALP 只管理设备当前能够使用或已经装入的耗材，不定义采购�
 available | installed | in_use | depleted | expired | contaminated | removed | unknown
 ```
 
-`remaining_quantity` 可以是准确值、估算值或 `null`。其质量和来源通过普通状态字段或 Evidence 表达。
+`remaining_quantity` 可以是准确值、估算值或 `null`。其质量和来源通过普通状态字段或证据表达。
 
-##### Legacy Consumable Methods
+##### 旧版耗材方法
 
-规范接口是 `physical_resources/*` 和 `device_supplies/*`。Server MAY 在协商兼容扩展后提供以下旧方法别名：
+规范接口是 `physical_resources/*` 和 `device_supplies/*`。服务端可以在协商兼容扩展后提供以下旧方法别名：
 
 - `consumables/list`
 - `consumables/get`
@@ -817,9 +817,9 @@ available | installed | in_use | depleted | expired | contaminated | removed | u
 }
 ```
 
-请求中的 `source` 是声明来源，Server 只有在能够绑定已验证操作员、设备或传感器身份时才可按该来源记录；否则必须拒绝或标记为 `unknown`。
+请求中的 `source` 是声明来源，服务端只有在能够绑定已验证操作员、设备或传感器身份时才可按该来源记录；否则必须拒绝或标记为 `unknown`。
 
-`consumables/register` 遇到已存在的 `consumable_id` MUST 返回冲突，不得覆盖原实例；修改现有实例必须使用 `consumables/update` 和 revision。
+`consumables/register` 遇到已存在的 `consumable_id` 必须返回冲突，不得覆盖原实例；修改现有实例必须使用 `consumables/update` 和修订号。
 
 `consumables/update` 使用字段掩码避免无意覆盖未提交字段：
 
@@ -843,7 +843,7 @@ available | installed | in_use | depleted | expired | contaminated | removed | u
 }
 ```
 
-`consumables/install` 和 `consumables/uninstall` 只确认设备内的安装关系，不替代物理交接。外部对象进入或离开时，参数 MUST 引用已经完成 confirm 的本地 `transfer_id`：
+`consumables/install` 和 `consumables/uninstall` 只确认设备内的安装关系，不替代物理交接。外部对象进入或离开时，参数必须引用已经完成确认的本地 `transfer_id`：
 
 ```json
 {
@@ -863,26 +863,26 @@ available | installed | in_use | depleted | expired | contaminated | removed | u
 }
 ```
 
-`uninstall` 使用相同结构，将 `install_path` 替换为当前安装位置，并引用已确认的 egress `transfer_id`。设备内部自动换位不经过边界时，`confirmed_transfer_id` MAY 省略，但 Server MUST 以设备回读或已完成 Action 证明位置变化。
+`uninstall` 使用相同结构，将 `install_path` 替换为当前安装位置，并引用已确认的离开 `transfer_id`。设备内部自动换位不经过边界时，`confirmed_transfer_id` 可以省略，但服务端必须以设备回读或已完成动作证明位置变化。
 
 允许的修改主体：
 
 - 经过身份验证的上位机操作员；
-- 设备动作成功后的 Server 状态更新；
+- 设备动作成功后的服务端状态更新；
 - 获得 `consumables:write` 权限的单设备智能体。
 
-设备智能体可以控制机器人完成耗材装入或取出，再调用 `consumables/install` 或 `consumables/uninstall` 更新设备事实。接口 MUST 记录 `verified_actor`、修改原因、旧值、新值和 revision。
+设备智能体可以控制机器人完成耗材装入或取出，再调用 `consumables/install` 或 `consumables/uninstall` 更新设备事实。接口必须记录 `verified_actor`、修改原因、旧值、新值和修订号。
 
-以下字段不能通过普通 update 伪造：
+以下字段不能通过普通 `update` 操作伪造：
 
 - 设备传感器回读；
-- 已完成动作的 Evidence；
+- 已完成动作的证据；
 - 锁定的耗材类型约束；
 - 其他调用者创建的审计记录。
 
-`install` 和 `uninstall` 表示设备对安装关系的确认。若物理动作由机器人执行，必须先完成 Physical Resource Transfer 两阶段流程；未完成 confirm 时不得把状态改为 `installed` 或 `removed`。
+`install` 和 `uninstall` 表示设备对安装关系的确认。若物理动作由机器人执行，必须先完成物理资源交接两阶段流程；未完成确认时不得把状态改为 `installed` 或 `removed`。
 
-动作和 Workflow SHOULD 声明 Device Supply 依赖与影响：
+动作和工作流应当声明设备供给物料依赖与影响：
 
 ```json
 {
@@ -904,13 +904,13 @@ available | installed | in_use | depleted | expired | contaminated | removed | u
 }
 ```
 
-供给物数量只在对应动作明确成功后更新；结果为 `unknown` 时，相关 Device Supply 状态 SHOULD 标记为 `unknown` 或等待人工修正。
+供给物数量只在对应动作明确成功后更新；结果为 `unknown` 时，相关设备供给物料状态应当标记为 `unknown` 或等待人工修正。
 
-## 物理资源转移
+## 物理资源交接
 
-Physical Resource Transfer 规范 Work Object 或需要追踪物理交接的 Device Supply 进入、离开当前 Device Node 控制工作区的过程。协议只追踪本设备边界内的准备和确认，不追踪资源在两个设备之间的完整运输路线。
+物理资源交接规范作业对象或需要追踪物理交接的设备供给物料进入、离开当前设备节点控制工作区的过程。协议只追踪本设备边界内的准备和确认，不追踪资源在两个设备之间的完整运输路线。
 
-### 转移点
+### 交接点
 
 ```json
 {
@@ -924,18 +924,18 @@ Physical Resource Transfer 规范 Work Object 或需要追踪物理交接的 Dev
 }
 ```
 
-每个 Transfer Point MUST 定义：
+每个交接点必须定义：
 
 - 本设备内的工作区路径；
 - 允许进入和离开的方向；
 - 允许的物理资源类型；
 - 可执行物理交接的主体；
-- 可以用于 confirm 的确认来源；
+- 可以用于确认的来源；
 - 并发容量和占用约束。
 
 ### 边界状态
 
-需要跨越设备边界的 Physical Resource 使用以下边界状态：
+需要跨越设备边界的物理资源使用以下边界状态：
 
 ```text
 outside
@@ -947,9 +947,9 @@ egress_pending
 unknown
 ```
 
-跨设备运输过程不属于本 Device Node 的状态。资源离开后，本设备只保留审计记录，不需要追踪其是否到达另一个设备。
+跨设备运输过程不属于本设备节点的状态。资源离开后，本设备只保留审计记录，不需要追踪其是否到达另一个设备。
 
-### 两阶段转移
+### 两阶段交接
 
 进出均使用两阶段流程：
 
@@ -959,9 +959,9 @@ transfers/prepare
 → transfers/confirm
 ```
 
-`prepare` 只验证、预留并把资源置为对应的 pending 状态，不建立最终位置关系。预留会改变可执行状态，因此必须更新 `device_state` revision。`confirm` 在获得允许的确认来源后，原子更新位置、包含关系、位置占用和 revision。
+`prepare` 只验证、预留并把资源置为对应的待确认状态，不建立最终位置关系。预留会改变可执行状态，因此必须更新 `device_state` 修订号。`confirm` 在获得允许的确认来源后，原子更新位置、包含关系、位置占用和修订号。
 
-支持进出的设备 MUST 实现：
+支持进出的设备必须实现：
 
 - `transfers/prepare`
 - `transfers/confirm`
@@ -1013,11 +1013,11 @@ transfers/prepare
 }
 ```
 
-`counterparty_ref` 是可选的外部不透明引用，仅用于审计关联。Server MUST NOT 依赖它追踪跨设备路线或另一设备状态。
+`counterparty_ref` 是可选的外部不透明引用，仅用于审计关联。服务端不得依赖它追踪跨设备路线或另一设备状态。
 
-`transfers/prepare` MUST 支持 `idempotency_key`，并把它绑定到调用身份、设备、方向、Transfer Point 和资源摘要。相同绑定在预留有效期内重试时 MUST 返回同一 `transfer_id`；同一键对应不同内容时必须拒绝。
+`transfers/prepare` 必须支持 `idempotency_key`，并把它绑定到调用身份、设备、方向、交接点和资源摘要。相同绑定在预留有效期内重试时必须返回同一 `transfer_id`；同一键对应不同内容时必须拒绝。
 
-### 确认转移
+### 确认交接
 
 ```json
 {
@@ -1040,42 +1040,42 @@ transfers/prepare
 }
 ```
 
-`confirmed_by` 必须由 Server 根据已验证身份或受信任设备证据写入审计记录，不能接受请求正文自报。传感器、视觉或机器人确认必须引用 Server 可验证的证据或已登记来源。
+`confirmed_by` 必须由服务端根据已验证身份或受信任设备证据写入审计记录，不能接受请求正文自报。传感器、视觉或机器人确认必须引用服务端可验证的证据或已登记来源。
 
-同一 `transfer_id` 已成功 confirm 后，内容一致的重复 confirm MUST 返回原终态结果，不得再次修改资源或 revision；内容冲突的重复 confirm 必须拒绝。
+同一 `transfer_id` 已成功确认后，内容一致的重复确认必须返回原终态结果，不得再次修改资源或修订号；内容冲突的重复确认必须拒绝。
 
-成功 confirm 后：
+成功确认后：
 
-- ingress 将资源状态更新为 `present`，建立本设备位置关系并占用 Transfer Point；
-- egress 将资源状态更新为 `outside`，清除本设备位置和占用关系；
-- 容器型 Work Object 移动时，其 `contained_in` 子对象作为一个聚合整体更新；
-- 更新必须产生新的 revision 和审计记录。
+- 进入时将资源状态更新为 `present`，建立本设备位置关系并占用交接点；
+- 离开时将资源状态更新为 `outside`，清除本设备位置和占用关系；
+- 容器型作业对象移动时，其 `contained_in` 子对象作为一个聚合整体更新；
+- 更新必须产生新的修订号和审计记录。
 
 如果物理交接无法确认：
 
-- Server MUST NOT 猜测最终位置；
-- Transfer 和相关资源 MUST 标记为 `unknown`；
-- 后续依赖该位置的动作 MUST 被拒绝，直到人工或传感器重新确认。
+- 服务端不得猜测最终位置；
+- 交接和相关资源必须标记为 `unknown`；
+- 后续依赖该位置的动作必须被拒绝，直到人工或传感器重新确认。
 
 ### 准备离开
 
-egress 的 `prepare` MUST 额外验证：
+离开方向的 `prepare` 必须额外验证：
 
-- 资源没有被 Action 或 Workflow 使用；
-- 资源未被执行锁或 reservation 占用；
-- Work Object 的封闭和安全状态满足离开条件；
-- 子 Work Object 是否随父 Work Object 一起离开已经明确；
-- Transfer Point 可以安全交接。
+- 资源没有被动作或工作流使用；
+- 资源未被执行锁或预留占用；
+- 作业对象的封闭和安全状态满足离开条件；
+- 子作业对象是否随父作业对象一起离开已经明确；
+- 交接点可以安全交接。
 
-`transfers/cancel` 只允许在最终 confirm 前取消预留。物理资源已经可能移动时，取消不得直接恢复旧位置；Server 应进入 `unknown` 并请求重新确认。
+`transfers/cancel` 只允许在最终确认前取消预留。物理资源已经可能移动时，取消不得直接恢复旧位置；服务端应进入 `unknown` 并请求重新确认。
 
 ### 跨设备边界
 
-ALP 允许外部编排系统把一次 egress 与另一设备的 ingress 关联，但不规定跨设备事务、路线、运输状态或端到端完成协议。每个设备只负责：
+ALP 允许外部编排系统把一次离开与另一设备的一次进入关联，但不规定跨设备事务、路线、运输状态或端到端完成协议。每个设备只负责：
 
-1. 自己的 Transfer Point；
-2. 自己的 prepare 与 confirm；
-3. 自己的物理资源位置和 revision；
+1. 自己的交接点；
+2. 自己的准备与确认；
+3. 自己的物理资源位置和修订号；
 4. 自己的安全约束与审计。
 
 外部系统可以保存两个本地 `transfer_id` 的关联，本设备无需保存或理解该关联。

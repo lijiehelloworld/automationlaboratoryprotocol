@@ -5,7 +5,7 @@ description: "服务发现、设备清单与设备模型"
 
 #### `server/discover`
 
-所有 Server MUST 实现 `server/discover`。该方法 MUST NOT 移动硬件。
+所有服务端必须实现 `server/discover`。该方法不得移动硬件。
 
 请求：
 
@@ -59,7 +59,7 @@ description: "服务发现、设备清单与设备模型"
 
 #### `devices/get_manifest`
 
-所有 Server MUST 实现 `devices/get_manifest`，使 Client 不依赖任何可选资源能力即可取得设备 Manifest：
+所有服务端必须实现 `devices/get_manifest`，使客户端不依赖任何可选资源能力即可取得设备能力清单：
 
 ```json
 {
@@ -73,11 +73,11 @@ description: "服务发现、设备清单与设备模型"
 }
 ```
 
-响应 MUST 包含 `resultType`、`ttlMs`、`cacheScope`、Manifest `revision` 和完整 `manifest`。如果 `if_revision` 与当前 Manifest revision 相同，Server MAY 返回 `not_modified=true` 而省略 Manifest 正文。该方法 MUST NOT 移动硬件。
+响应必须包含 `resultType`、`ttlMs`、`cacheScope`、能力清单 `revision` 和完整 `manifest`。如果 `if_revision` 与当前能力清单修订号相同，服务端可以返回 `not_modified=true` 而省略能力清单正文。该方法不得移动硬件。
 
 ## 设备清单
 
-每个设备 MUST 具有稳定 `device_id` 和机器可读 Manifest。
+每个设备必须具有稳定 `device_id` 和机器可读能力清单。
 
 ```json
 {
@@ -112,18 +112,18 @@ description: "服务发现、设备清单与设备模型"
 }
 ```
 
-Manifest 字段：
+能力清单字段：
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| `protocol_version` | 是 | Manifest 对应的协议版本 |
+| `protocol_version` | 是 | 能力清单对应的协议版本 |
 | `device` | 是 | 设备身份、`single/composite` 类型和可选成员列表 |
-| `revision` | 是 | Manifest 域版本；能力、Schema、约束或成员定义变化时递增 |
+| `revision` | 是 | 能力清单域版本；能力、数据结构定义、约束或成员定义变化时递增 |
 | `properties` | 是 | 状态和可写属性定义 |
 | `actions` | 是 | 可执行动作定义；只读设备可以为空 |
 | `physical_resource_types` | 是 | `work_object` 与 `device_supply` 类型定义；不适用时为空 |
 | `transfer_points` | 是 | 物理资源进入或离开设备工作区的边界；不适用时为空 |
-| `workflows` | 是 | 可选 Workflow；不支持时为空数组 |
+| `workflows` | 是 | 可选工作流；不支持时为空数组 |
 | `resources` | 是 | 资源定义；不适用时为空 |
 | `constraints` | 是 | 机器可校验的限制 |
 | `device_agent` | 是 | 单设备智能体说明；未提供时为 `null` |

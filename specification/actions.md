@@ -1,9 +1,9 @@
 ---
 title: "动作"
-description: "动作定义以及 invoke 接口"
+description: "动作定义以及调用接口"
 ---
 
-Action 表示一个具有固定语义和确定性执行边界的设备过程。
+动作表示一个具有固定语义和确定性执行边界的设备过程。
 
 ## 动作定义
 
@@ -62,16 +62,16 @@ Action 表示一个具有固定语义和确定性执行边界的设备过程。
 }
 ```
 
-前置条件 MUST 使用结构化 Predicate，不得把任意代码或通用表达式交给 Server 执行。Predicate 包含 `path` 或 `path_template`、`operator` 和比较值；核心操作符为 `eq`、`ne`、`lt`、`lte`、`gt`、`gte`、`in`、`contains` 和 `exists`。模板只允许引用当前 Action 的 `arguments`，或当前 Workflow 的 `inputs` 与已完成步骤输出。
+前置条件必须使用结构化条件表达式，不得把任意代码或通用表达式交给服务端执行。条件表达式包含 `path` 或 `path_template`、`operator` 和比较值；核心操作符为 `eq`、`ne`、`lt`、`lte`、`gt`、`gte`、`in`、`contains` 和 `exists`。模板只允许引用当前动作的 `arguments`，或当前工作流的 `inputs` 与已完成步骤输出。
 
-`effects` 是用于审查、规划和审计的声明，不自行授予写权限。实际状态变化仍必须来自 Action 实现和受控状态更新。
+`effects` 是用于审查、规划和审计的声明，不自行授予写权限。实际状态变化仍必须来自动作实现和受控状态更新。
 
 `execution_mode`：
 
 | 值 | 含义 |
 | --- | --- |
 | `atomic` | 对外表现为一个不可拆分的确定性动作 |
-| `orchestrated` | Server 按经过审核的固定步骤执行，但只返回一个 Action 结果 |
+| `orchestrated` | 服务端按经过审核的固定步骤执行，但只返回一个动作结果 |
 | `device_program` | 由 PLC、控制器或设备固件执行固定程序 |
 
 #### `invoke`
@@ -121,4 +121,4 @@ Action 表示一个具有固定语义和确定性执行边界的设备过程。
 }
 ```
 
-动作 MUST 默认视为非幂等，除非 Action Definition 明确证明其可以安全去重。
+动作必须默认视为非幂等，除非动作定义明确证明其可以安全去重。
