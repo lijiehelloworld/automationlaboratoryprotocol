@@ -150,6 +150,9 @@
       }
     ]
   },
+  "navbar": {
+    "links": []
+  },
   "footer": {
     "socials": {
       "github": "https://github.com/lijiehelloworld/automationlaboratoryprotocol"
