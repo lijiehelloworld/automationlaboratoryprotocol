@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="470" height="44" viewBox="0 0 470 44" role="img" aria-labelledby="title">
+  <title id="title">Automation Laboratory Protocol</title>
+  <g fill="none" stroke="#155EEF" stroke-linecap="round" stroke-linejoin="round" stroke-width="3">
+    <path d="M7 22h11m8 0h11"/>
+    <circle cx="22" cy="22" r="7"/>
+    <path d="M22 15V8m0 28v-7"/>
+  </g>
+  <text x="48" y="30" fill="#155EEF" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="700">Automation Laboratory Protocol</text>
+</svg>

@@ -3,6 +3,7 @@
   "theme": "mint",
   "name": "Automation Laboratory Protocol",
   "description": "Automation Laboratory Protocol（ALP，自动化实验室协议）中文规范",
+  "logo": "/images/alp-logo.svg",
   "colors": {
     "primary": "#155EEF",
     "light": "#2E90FA",
@@ -22,7 +23,7 @@
             ]
           },
           {
-            "group": "总体设计",
+            "group": "架构与术语",
             "pages": [
               "architecture/overview",
               "architecture/terms"
@@ -34,14 +35,14 @@
         "tab": "规范",
         "groups": [
           {
-            "group": "规范总览",
+            "group": "协议概览",
             "pages": [
               "specification/overview",
               "specification/protocol-contract"
             ]
           },
           {
-            "group": "基础协议",
+            "group": "通信基础",
             "pages": [
               "specification/base-protocol",
               "specification/client-features"
@@ -124,7 +125,7 @@
         "tab": "改进提案",
         "groups": [
           {
-            "group": "提案流程",
+            "group": "规范演进",
             "pages": [
               "proposals/about",
               "proposals/process",
