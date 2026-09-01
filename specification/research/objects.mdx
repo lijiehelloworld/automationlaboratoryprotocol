@@ -1,6 +1,6 @@
 ---
 title: "研究对象与状态"
-description: "以现有容器和样品状态字段表达实验对象状态演化"
+description: "以容器和样品状态字段表达实验对象状态演化"
 ---
 
 ## 研究对象
@@ -33,6 +33,58 @@ FSP 只负责设备可见的容器和状态；ALL 方法层把这些状态与科
 | `provenance` | `array[object]` | 是 | 对象创建、状态提交和更正记录 |
 | `extensions` | `object` | 是 | 命名空间隔离的扩展字段 |
 
+## 完整结构示例
+
+```json
+{
+  "identity": {
+    "object_id": "sample-1",
+    "object_type": "experimental_sample",
+    "name": "试剂A样品"
+  },
+  "sample": {
+    "sample_status": "液体",
+    "sample_volume": 0.5,
+    "volume_unit": "mL",
+    "source_bottle_ids": [1]
+  },
+  "container": {
+    "container_id": 1,
+    "container_type": "进样瓶",
+    "container_status": "无盖",
+    "shape": null,
+    "diameter_mm": null,
+    "height_mm": null,
+    "material": null
+  },
+  "state": {
+    "revision": "8",
+    "observed_at": "2026-09-01T12:00:12Z"
+  },
+  "location": {
+    "device_id": "2002186824385539"
+  },
+  "evidence": [
+    {
+      "evidence_type": "execution_result",
+      "result_ref": "exec-a01-001/step-2",
+      "created_at": "2026-09-01T12:00:12Z"
+    }
+  ],
+  "provenance": [
+    {
+      "change_type": "state_commit",
+      "operation_ref": "add_liquid_with_material",
+      "created_at": "2026-09-01T12:00:12Z",
+      "committed_by": "ALL 执行服务"
+    }
+  ],
+  "extensions": {}
+}
+```
+
+该示例表示：研究对象 `sample-1` 当前位于指定工作站的 1 号进样瓶内；加液结果把样品状态更新为液体并提交修订号 `8`；证据和来源分别记录结果位置与状态提交原因。容器静态属性未知，因此保持 `null`。
+
 ## 分区字段
 
 ### 身份 `identity`
@@ -50,7 +102,7 @@ FSP 只负责设备可见的容器和状态；ALL 方法层把这些状态与科
 | `sample_status` | `string` | 沿用能力声明的样品状态 |
 | `sample_volume` | `number` 或 `null` | 样品体积；未知时为 `null` |
 | `volume_unit` | `string` 或 `null` | 与体积分离表达的单位 |
-| `source_bottle_ids` | `array[int]` | 现有加液返回中的原液瓶编号列表 |
+| `source_bottle_ids` | `array[int]` | 加液返回中的原液瓶编号列表 |
 
 ### 容器 `container`
 
@@ -74,11 +126,11 @@ FSP 只负责设备可见的容器和状态；ALL 方法层把这些状态与科
 | `provenance[]` | 变更类型、相关操作或方法引用、时间和提交主体 |
 | `extensions` | 以实现者控制的命名空间组织，不能覆盖标准字段 |
 
-`skill_all` 当前没有完整研究对象、证据和来源产物，因此本页不构造伪造的完整实例；下面只使用已有能力和执行计划中实际出现的容器与样品字段说明状态演化。
+下面使用同一非规范性设备示例中的容器与样品字段说明研究对象状态演化。未知事实必须使用 `null` 或空数组，不能用推测值填充。
 
-## 现有输入字段
+## 状态交换字段
 
-`skill_all` 的工作站能力和方案使用以下实际字段：
+设备能力和方法之间通过以下公共字段传递状态：
 
 ```text
 container_type
@@ -94,7 +146,7 @@ source_bottle_ids
 
 ## 初始状态示例
 
-来自现有开盖能力：
+开盖能力的初始状态示例：
 
 ```yaml
 container_type: 进样瓶
@@ -121,7 +173,7 @@ sample_status: 空
 
 ## 操作输出示例
 
-现有加液操作返回容器列表：
+加液操作返回容器列表：
 
 ```json
 {
@@ -152,7 +204,7 @@ sample_status: 空
 }
 ```
 
-`skill_all` 没有提供这些静态值，因此示例只保留字段。静态属性来自设备提供的数据或经过确认的容器目录，不得由方法生成器猜测。
+示例没有给出这些静态值，因此保留为 `null`。静态属性来自设备提供的数据或经过确认的容器目录，不得由方法生成器猜测。
 
 ## 状态上下文输出
 

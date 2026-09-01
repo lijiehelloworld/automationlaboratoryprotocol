@@ -1,11 +1,11 @@
 ---
 title: "执行与证据闭环"
-description: "最终执行计划、FSP 下发、状态提交和现有证据边界"
+description: "最终执行计划、FSP 下发、状态提交和执行证据"
 ---
 
 ## 输入：最终执行计划
 
-以下结构来自 `skill_all` 现有最小闭环执行计划：
+最终执行计划必须采用以下结构。示例展示两份样品加液并进行光谱表征的最小闭环：
 
 ```json
 {
@@ -108,7 +108,23 @@ description: "最终执行计划、FSP 下发、状态提交和现有证据边�
 }
 ```
 
-`steps` 使用[能力匹配与设备绑定](/specification/methods/binding)中的真实结构。
+`steps` 使用[技能与资源匹配](/specification/methods/binding)中的结构。
+
+### 执行计划字段
+
+| 字段 | 作用 |
+| --- | --- |
+| `实验名称`、`plan_name` | 提供面向人员与程序的计划名称 |
+| `实验流程[]` | 提供可读的步骤摘要，不作为设备调用依据 |
+| `涉及工作站[]` | 汇总计划绑定的工作站及操作 |
+| `path` | 表达工作站之间的有向依赖关系 |
+| `steps[]` | 保存可下发步骤的设备、操作和参数 |
+| `steps[].step_number` | 确定步骤顺序 |
+| `steps[].id` | 绑定 FSP `device_id` |
+| `steps[].workstation` | 提供工作站显示名称 |
+| `steps[].operation` | 保存已绑定的操作名称 |
+| `steps[].parameters` | 保存通过校验的操作实参 |
+| `unknown_steps` | 保存无法绑定的步骤；非空时禁止执行 |
 
 ## 下发方式
 
@@ -124,7 +140,7 @@ steps[].parameters → 通过参数绑定解析为 arguments
 
 ## 仿真输出
 
-当前可验证证据是 `run_simulation.py` 产生的仿真报告：
+方法在进入物理执行前必须生成仿真报告：
 
 ```json
 {
@@ -133,7 +149,7 @@ steps[].parameters → 通过参数绑定解析为 arguments
   "command_exit_code": 0,
   "operation_count": 6,
   "checks": [
-    "调用仅使用已注册工作站函数",
+    "调用仅使用已准入工作站函数",
     "开盖、加液、关盖和检测构成研究对象从 St 到 St+1 的状态演化",
     "强制条件失败时不提交研究对象的模拟状态"
   ]
@@ -157,9 +173,7 @@ steps[].parameters → 通过参数绑定解析为 arguments
 
 ## 真实执行证据边界
 
-当前 `skill_all` 没有真实 FSP 运行时的任务进度、物理执行结果和证据包样例。因此本规范不把自行构造的 `execution_id`、`evidence_id` 或设备事件当作现有产物。
-
-设备实现 FSP 后，真实执行至少应当返回：
+真实执行至少应当返回：
 
 - 实际调用的操作和参数；
 - 开始和完成状态；
@@ -167,4 +181,38 @@ steps[].parameters → 通过参数绑定解析为 arguments
 - 结果或诊断；
 - 可以关联到研究对象来源记录的执行引用。
 
-具体运行时字段以首个通过验证的 FSP 实现样例为准，再纳入非规范性示例。
+### 执行证据输出示例
+
+```json
+{
+  "execution_id": "exec-a01-001",
+  "plan_name": "A01 CoFeNi 高熵氧化物：样品准备与 UV-Vis 表征最小闭环",
+  "status": "succeeded",
+  "started_at": "2026-09-01T12:00:00Z",
+  "completed_at": "2026-09-01T12:08:00Z",
+  "step_results": [
+    {
+      "step_number": 1,
+      "device_id": "2002186824385539",
+      "command_id": "open_caps",
+      "status": "succeeded",
+      "task_id": null,
+      "result": {"opened_bottles": [1, 2], "opened_bottles_count": 2},
+      "diagnostics": []
+    }
+  ],
+  "state_committed": true,
+  "evidence_refs": ["evidence://exec-a01-001/step-1"]
+}
+```
+
+| 输出字段 | 作用 |
+| --- | --- |
+| `execution_id` | 唯一标识一次计划执行 |
+| `status` | 汇总执行是否成功、失败、取消或结果未知 |
+| `started_at`、`completed_at` | 记录真实运行时间边界 |
+| `step_results[]` | 保存每步实际设备、指令、任务、结果和诊断 |
+| `state_committed` | 表示是否已经依据设备确认结果提交研究对象状态 |
+| `evidence_refs[]` | 把执行结果关联到可审计证据位置 |
+
+执行服务必须使用[异步任务](/specification/fsp/async-tasks)定义的任务状态和本页定义的证据记录，不得以执行计划中的预期状态代替设备确认结果。

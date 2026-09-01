@@ -45,11 +45,11 @@ description: "FSP 设备目录和对象、操作、系统三分区能力数据"
 
 | 字段 | 类型 | 是否必需 | 说明 |
 | --- | --- | --- | --- |
-| `devices` | `array[object]` | 是 | 当前账户可见设备列表 |
+| `devices` | `array[object]` | 是 | 当前 FSP 服务声明的设备列表 |
 | `devices[].device_id` | `string` | 是 | 稳定设备标识 |
 | `devices[].name` | `string` | 是 | 设备名称 |
 | `devices[].capability_revision` | `string` | 是 | 当前能力数据修订号 |
-| `devices[].available` | `boolean` | 是 | 服务当前是否允许访问该设备 |
+| `devices[].available` | `boolean` | 是 | 设备当前是否可接收后续请求 |
 
 ## 能力数据集
 
@@ -79,7 +79,7 @@ FSPCapabilityDataset
 
 | 参数 | 类型 | 是否必需 | 约束 |
 | --- | --- | --- | --- |
-| `device_id` | `string` | 是 | 必须来自当前账户的 `fsp/discover` 结果 |
+| `device_id` | `string` | 是 | 必须来自当前 FSP 服务的 `fsp/discover` 结果 |
 | `if_revision` | `string` | 否 | 调用方已缓存的能力修订号 |
 
 ### 输出结构
@@ -97,9 +97,48 @@ FSPCapabilityDataset
         "description": "支持容器开盖、加液、关盖操作。最多可添加16种不同溶液，移液枪单次最大移液量1mL，单种溶液总加注量不超过3mL。严格执行一瓶一液原则，单只原液瓶仅盛放一种溶液，全程保持原液瓶编号顺序固定不变。"
       },
       "revision": "12",
-      "objects": [],
-      "operations": [],
-      "system": {}
+      "objects": [
+        {
+          "object_type_id": "container.sample_vial",
+          "name": "进样瓶",
+          "object_kind": "container",
+          "properties": {
+            "shape": null,
+            "diameter_mm": null,
+            "height_mm": null,
+            "material": null
+          },
+          "states": {
+            "container_status": ["有盖", "无盖"],
+            "sample_status": ["空", "液体", "固体", "固液混合物"]
+          }
+        }
+      ],
+      "operations": [
+        {
+          "command_id": "add_liquid_with_material",
+          "command_class": "invoke",
+          "execution_mode": "async",
+          "name": "加液_物料绑定",
+          "initial_state": {"container_status": ["无盖"]},
+          "parameters": [
+            {"name": "container_ids", "type": "array[int]", "required": true},
+            {"name": "dispensing_plan", "type": "array[object]", "required": true}
+          ],
+          "effects": {"sample_status": {"空": "液体"}},
+          "returns": [{"name": "containers", "type": "array[object]"}]
+        }
+      ],
+      "system": {
+        "availability_states": ["offline", "idle", "busy", "paused", "fault", "maintenance"],
+        "status_fields": ["state", "available", "current_task"],
+        "safety_fences": [
+          {
+            "name": "容器状态约束",
+            "description": "加液前容器必须处于无盖状态。"
+          }
+        ]
+      }
     },
     "diagnostics": []
   }
@@ -137,7 +176,7 @@ FSPCapabilityDataset
 
 ## 错误输出
 
-设备不可见、参数错误或版本不支持时，请求不得返回部分能力数据：
+设备不存在、参数错误或版本不支持时，请求不得返回部分能力数据：
 
 ```json
 {
@@ -145,7 +184,7 @@ FSPCapabilityDataset
   "id": "capability-1",
   "error": {
     "code": -32004,
-    "message": "设备不可见或不存在",
+    "message": "设备不存在",
     "data": {
       "diagnostics": [
         {
@@ -159,7 +198,7 @@ FSPCapabilityDataset
 }
 ```
 
-错误消息不得用于判断调用方无权访问的设备是否真实存在。
+错误响应不得包含其他设备的能力、状态或内部实现信息。
 
 以下变化必须产生新的能力修订号：
 
@@ -172,4 +211,4 @@ FSPCapabilityDataset
 
 ## 能力数据的事实地位
 
-FSP 能力数据是设备能力的事实来源。由其生成的 Skill、MDX 或其他自然语言说明不得改变对象属性、操作参数、强制约束和系统安全围栏。
+FSP 能力数据是设备能力的事实来源。由其生成的设备技能描述、函数式技能或其他模型可读说明不得改变对象属性、操作参数、强制约束和系统安全围栏。

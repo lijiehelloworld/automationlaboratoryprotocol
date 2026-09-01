@@ -1,25 +1,85 @@
 ---
-title: "能力匹配与设备绑定"
-description: "把验证后的函数调用绑定到现有工作站、操作和参数"
+title: "技能与资源匹配"
+description: "把验证后的函数调用绑定到可用工作站、操作和参数"
 ---
 
 ## 模块作用
 
-能力匹配读取合格设备能力库，根据方法需要的函数、容器状态、参数范围和设备可用性选择工作站。当前 `skill_all` 没有独立的候选设备评分 JSON，因此本规范不编造 `match_score` 或候选列表。
+技能匹配读取合格设备技能库，根据方法需要的函数、容器状态、参数范围和设备可用性选择工作站。ALL 不定义没有验证依据的通用匹配分数；绑定结果只表达已匹配步骤和无法绑定步骤。
 
 ## 输入
 
 ```text
 已通过仿真的代码式方法
-函数式能力签名
+函数式技能签名
 工作站编码和名称
 工作站操作及参数约束
 当前设备可用状态
 ```
 
+### 输入示例
+
+```json
+{
+  "method_call": {
+    "namespace": "Liquid_Handling_Station_1ml_V2",
+    "function": "add_liquid_with_material",
+    "arguments": {
+      "container_type": "进样瓶",
+      "container_count": 2,
+      "container_ids": [1],
+      "dispensing_plan": [{"原液瓶编号": 1, "加液体积": 0.5}]
+    }
+  },
+  "capability": {
+    "device_id": "2002186824385539",
+    "revision": "12",
+    "command_id": "add_liquid_with_material",
+    "available": true
+  }
+}
+```
+
+| 输入字段 | 作用 |
+| --- | --- |
+| `method_call.namespace` | 指定函数所属工作站能力空间 |
+| `method_call.function` | 指定要绑定的函数名称 |
+| `method_call.arguments` | 提供已经通过仿真的实参 |
+| `capability.device_id` | 指定实际接收调用的设备 |
+| `capability.revision` | 确保绑定目标仍是验证过的能力版本 |
+| `capability.command_id` | 建立函数到 FSP 指令的确定映射 |
+| `capability.available` | 防止把步骤绑定到当前不可用设备 |
+
+## 参数展开
+
+执行计划可以保存紧凑参数，但绑定器下发 FSP 前必须按技能定义补齐所有必需参数。补齐只能使用技能中声明的默认值或确定性派生规则，不能由模型猜测。
+
+| 操作 | 紧凑输入 | 确定性展开 |
+| --- | --- | --- |
+| `open_caps` | `container_ids=[1,2]` | `open_cap_bottle_ids=[{"bottle_id":1},{"bottle_id":2}]`；`keep_cap=1` |
+| `close_caps` | `container_ids=[1,2]` | `close_cap_bottle_ids=[{"bottle_id":1},{"bottle_id":2}]` |
+| `add_liquid_with_material` | 原液瓶编号与加液体积 | 展开为 `sample_bottle_id` 和完整 `source_bottle` 对象 |
+
+展开后的开盖调用示例：
+
+```json
+{
+  "device_id": "2002186824385539",
+  "command_id": "open_caps",
+  "arguments": {
+    "container_type": "进样瓶",
+    "container_count": 2,
+    "container_ids": [1, 2],
+    "open_cap_bottle_ids": [{"bottle_id": 1}, {"bottle_id": 2}],
+    "keep_cap": 1
+  },
+  "expected_revision": "7"
+}
+```
+
 ## 匹配依据
 
-每个方法调用必须能够在合格能力库中找到：
+每个方法调用必须能够在合格设备技能库中找到：
 
 ```text
 工作站 namespace
@@ -33,7 +93,7 @@ description: "把验证后的函数调用绑定到现有工作站、操作和参
 
 ## 绑定输出
 
-现有转换器把绑定结果写入最终 JSON：
+绑定器把结果写入最终 JSON：
 
 ```json
 {
@@ -49,7 +109,7 @@ description: "把验证后的函数调用绑定到现有工作站、操作和参
 }
 ```
 
-加液步骤保持现有参数结构：
+加液步骤使用能力定义中的参数结构：
 
 ```json
 {
@@ -73,7 +133,7 @@ description: "把验证后的函数调用绑定到现有工作站、操作和参
 
 ## 路径输出
 
-设备间关系使用现有 `path` 字段：
+设备间关系使用 `path` 字段：
 
 ```json
 {
@@ -85,4 +145,4 @@ description: "把验证后的函数调用绑定到现有工作站、操作和参
 
 ## 无法绑定
 
-无法识别或无法绑定的步骤使用现有 `unknown_steps` 字段。没有真实产物支持时，不增加另一套 `no_compatible_device` 或候选评分返回格式。
+无法识别或无法绑定的步骤写入 `unknown_steps`，并保留原始步骤、失败原因和缺少的能力。存在未知步骤时，执行计划不得进入物理执行。

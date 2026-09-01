@@ -66,7 +66,7 @@ description: "协议错误、执行失败和恢复语义"
 | 编码 | 适用情况 |
 | --- | --- |
 | `unsupported_version` | 协议版本不支持 |
-| `device_not_found` | 目标设备不可见或不存在 |
+| `device_not_found` | 目标设备不存在 |
 | `capability_not_found` | 对象、操作或系统能力未声明 |
 | `invalid_parameter` | 参数类型、单位或结构错误 |
 | `parameter_out_of_range` | 参数超出范围或枚举 |
@@ -78,7 +78,7 @@ description: "协议错误、执行失败和恢复语义"
 | `execution_failed` | 设备确认操作失败 |
 | `result_unknown` | 无法确认最终结果，不得假定成功 |
 | `unsafe_cancellation` | 当前阶段不能安全取消 |
-| `task_not_found` | 异步任务不可见或不存在 |
+| `task_not_found` | 异步任务不存在 |
 | `task_result_expired` | 任务结果已超过保留期 |
 | `rate_limited` | 请求频率超过服务限制 |
 
@@ -87,4 +87,4 @@ description: "协议错误、执行失败和恢复语义"
 - `revision_conflict`、`stale_state` 和 `result_unknown` 出现后，调用方必须重新读取相关对象与系统状态；
 - `retryable=false` 时不得原样自动重试；
 - 操作已经开始时，网络超时不得被解释为失败或成功；
-- 服务端不得在错误消息中返回设备秘密、内部堆栈或不可见资源信息。
+- 服务端不得在错误消息中返回设备秘密、内部堆栈或其他资源信息。

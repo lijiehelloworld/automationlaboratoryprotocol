@@ -74,7 +74,7 @@ FSP 对外仍使用统一远程消息。底层接口类型不影响上层能力�
 
 ## 调用映射示意
 
-以下伪代码只说明适配顺序，参数名称沿用 `skill_all` 的 `add_liquid_with_material` 定义：
+以下伪代码使用本规范操作示例中的 `add_liquid_with_material` 参数，说明适配顺序：
 
 ```python
 def invoke(command_id, arguments, expected_revision):
@@ -101,4 +101,4 @@ def invoke(command_id, arguments, expected_revision):
 
 ## 接入后的下一步
 
-FSP 能力数据进入[能力供给与准入](/specification/capability/overview)，通过质量评估后才能进入合格设备能力库并用于实验方法生成。
+FSP 能力数据进入[技能提取](/specification/capability/overview)，通过质量评估后才能进入合格设备技能库并用于实验方法生成。

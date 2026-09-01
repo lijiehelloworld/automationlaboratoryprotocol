@@ -51,6 +51,11 @@ description: "设备总体能力、运行状态和安全围栏"
 }
 ```
 
+| 输入字段 | 类型 | 作用 |
+| --- | --- | --- |
+| `device_id` | `string` | 指定要读取的工作站 |
+| `category` | `string` | 固定为 `system`，表示读取工作站整体状态 |
+
 ```json
 {
   "result_type": "complete",
@@ -64,6 +69,15 @@ description: "设备总体能力、运行状态和安全围栏"
   "diagnostics": []
 }
 ```
+
+| 输出字段 | 类型 | 作用 |
+| --- | --- | --- |
+| `state` | `string` | 表示离线、空闲、忙碌、暂停、故障或维护状态 |
+| `available` | `boolean` | 表示工作站当前是否接受操作 |
+| `current_task` | `string` 或 `null` | 关联当前任务；空闲时为 `null` |
+| `capability_revision` | `string` | 表示当前状态对应的能力版本 |
+| `observed_at` | `string` | 表示状态观测时间 |
+| `diagnostics[]` | `array[object]` | 提供状态异常或读取问题的结构化诊断 |
 
 ## 状态值
 
@@ -91,4 +105,4 @@ maintenance
 - 是否需要人工确认；
 - 故障或急停状态是否禁止执行。
 
-安全围栏必须在设备执行前判断。自然语言实验方法、Skill 或调用方提示不能绕过安全围栏。
+安全围栏必须在设备执行前判断。自然语言实验方法、函数式技能或调用方提示不能绕过安全围栏。

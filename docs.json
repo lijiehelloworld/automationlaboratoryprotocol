@@ -60,7 +60,7 @@
             ]
           },
           {
-            "group": "能力供给与准入",
+            "group": "技能提取",
             "pages": [
               "specification/capability/overview",
               "specification/capability/quality",
