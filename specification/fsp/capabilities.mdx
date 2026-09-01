@@ -53,7 +53,9 @@ description: "FSP 设备目录和对象、操作、系统三分区能力数据"
 
 ## 能力数据集
 
-`fsp/get_capabilities` 返回类似表格记录、实际使用结构化 JSON 传输的能力数据。该数据替代人工 Excel 作为能力提炼入口。
+FSP 服务必须实现 `fsp/discover` 和 `fsp/get_capabilities`。它们是 FSP 层的统一能力获取接口：负责发现设备、分配或维护 `device_id`、聚合设备的对象、操作和系统信息，并向调用方返回结构化能力数据集。
+
+单个设备不要求原生实现这两个方法；设备侧只需提供或可映射相应事实信息。`fsp/get_capabilities` 返回类似表格记录、实际使用结构化 JSON 传输的能力数据。该数据替代人工 Excel 作为能力提炼入口。
 
 ```text
 FSPCapabilityDataset
