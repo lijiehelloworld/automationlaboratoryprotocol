@@ -1,11 +1,13 @@
 ---
-title: "对象"
-description: "FSP 可识别容器及其当前状态"
+title: "对象与容器"
+description: "FSP 可识别容器的类型目录、物理属性和当前状态"
 ---
 
 ## 范围
 
-FSP 对象分区说明设备能够识别或处理的容器类型，以及运行时容器的当前状态。
+FSP 对象分区主要说明设备能够识别或处理的容器类型，以及运行时容器的当前状态。架子、槽位和设备内部安装结构不作为对象类型目录的一部分；它们仅可作为位置或部署实现信息使用。
+
+平面基底、玻片、电池片等被设备直接处理但不盛装样品的实体，也可沿用同一对象结构登记为承载对象。`object_kind` 用于区分其物理角色：`container`、`carrier` 或 `fixture`。其中 `container` 是本规范对象模型的核心类型。
 
 研究对象的科学身份、样品、证据与来源见[研究对象与状态](/specification/research/objects)。
 
@@ -13,14 +15,29 @@ FSP 对象分区说明设备能够识别或处理的容器类型，以及运行�
 
 ```json
 {
-  "object_type_id": "container.sample_vial",
-  "name": "进样瓶",
+  "object_type_id": "container.vial",
+  "variant_id": "vial.flat_top.7_5mm",
+  "catalog_id": "CAAAH",
+  "name": "平口西林瓶",
   "object_kind": "container",
   "properties": {
-    "shape": null,
-    "diameter_mm": null,
-    "height_mm": null,
-    "material": null
+    "geometry": {
+      "shape": "cylindrical",
+      "height_mm": 75,
+      "body_outer_diameter_mm": 22.4,
+      "mouth_outer_diameter_mm": 19.6
+    },
+    "material": {
+      "primary": "glass"
+    },
+    "capacity": {
+      "nominal_volume_mL": null,
+      "max_working_volume_mL": null
+    },
+    "closure": {
+      "supported": true,
+      "type": "flat_top_cap"
+    }
   },
   "states": {
     "container_status": ["有盖", "无盖"],
@@ -41,15 +58,71 @@ FSP 对象分区说明设备能够识别或处理的容器类型，以及运行�
 
 | 字段 | 说明 |
 | --- | --- |
-| `object_type_id` | 稳定的容器类型标识 |
+| `object_type_id` | 稳定的对象类型标识；同一物理类别的变体共享该标识 |
+| `variant_id` | 稳定的物理变体标识；尺寸、材质或口部结构不同则必须不同 |
+| `catalog_id` | 目录中该对象或变体的唯一标识；缺少目录登记时为 `null` |
 | `name` | 面向人的名称 |
-| `object_kind` | 固定为 `container` |
-| `properties.shape` | 形状 |
-| `properties.material` | 材质 |
-| `properties.*` | 与形状匹配的尺寸，如直径、长、宽、高 |
+| `object_kind` | `container`、`carrier` 或 `fixture`；容器必须为 `container` |
+| `properties.geometry` | 形状、长宽高、厚度、内外径、口径、圆角和其他可测几何量 |
+| `properties.material` | 主材质及必要时的复合材质说明 |
+| `properties.capacity` | 标称容积和允许工作容积，单位为 `mL` |
+| `properties.layout` | 孔数、孔径等多孔容器或承载对象的布局属性 |
+| `properties.closure` | 是否支持盖体及盖体类型 |
 | `states` | 设备可观察或修改的状态字段和允许值 |
 
-圆形和圆柱形容器应当描述直径；非圆形容器使用适用的长度、宽度和高度。不可得数值使用 `null` 并附来源说明，不得猜测。
+圆形和圆柱形容器应当描述直径；非圆形容器使用适用的长度、宽度和高度。可盛装样品或试剂的容器应当声明 `nominal_volume_mL`；设备允许加注、抽取或处理的上限应当另行声明 `max_working_volume_mL`。不可得数值使用 `null`，并在 `metadata.attribute_status` 中标为 `unmeasured` 或 `unknown`，不得猜测。
+
+## 预置类型目录
+
+以下目录收录当前已登记的容器及直接受设备处理的承载对象。`catalog_id` 识别具体物理变体；同名、同旧代码但尺寸或结构不同的记录不得合并。实现可以只声明实际支持的子集，但不得用相近名称替代目录中的稳定标识。
+
+| 目录标识 | 类型或变体 | FSP 角色 | 已登记物理属性 |
+| --- | --- | --- | --- |
+| `CAAAA` | XRD 石英基底片 | `carrier` | 圆形；直径 32 mm；厚度 3 mm；石英 |
+| `CAAAB` | XRD 金属基底片 | `carrier` | 圆形；直径 33 mm；厚度 3.5 mm；金属 |
+| `CAAAC` | 红外基底片 | `carrier` | 圆形；直径 33 mm；厚度 4 mm；氟化钙玻璃 |
+| `CAAAD` | 50 mL 离心管（圆柱变体） | `container` | 圆柱；高 105 mm；瓶身直径 28 mm；塑料 |
+| `CAAAE` | 15 mL 锥形离心管 | `container` | 圆锥；标称容积 15 mL；高 120 mm；外径 16.4 mm |
+| `CAAAF` | 50 mL 锥形离心管 | `container` | 圆锥；标称容积 50 mL；高 115.5 mm；直径 28.7 mm |
+| `CAAAG` | 耐热瓶 | `container` | 高 105 mm；瓶盖直径 35.4 mm；瓶身直径 27.7 mm；聚四氟乙烯 |
+| `CAAAH` | 平口西林瓶 | `container` | 高 75 mm；瓶口直径 19.6 mm；瓶身直径 22.4 mm；玻璃 |
+| `CAAAI` | 螺口西林瓶（无机材料变体） | `container` | 高 110 mm；直径 27.5 mm；玻璃 |
+| `CAAAJ` | 螺口西林瓶（电解液变体） | `container` | 圆柱；高 60 mm；直径 28 mm；玻璃 |
+| `CAAAK` | 螺口西林瓶（塑料降解变体） | `container` | 高 60 mm；瓶身直径 17 mm；瓶口内径 10 mm |
+| `CAAAL` | 螺口西林瓶（聚合物变体） | `container` | 高 72.6 mm；瓶身外径 27.3 mm；瓶口内径 17.4 mm |
+| `CAAAM` | 螺口圆底西林瓶 | `container` | 高 75 mm；瓶身直径 22.5 mm；瓶口直径 11.4 mm |
+| `CAAAO` | 20 mL 粉末瓶 | `container` | 标称容积 20 mL；高 75.4 mm；瓶身直径 22.3 mm；瓶口内径 11.3 mm |
+| `null` | 1.5 mL 色谱瓶 | `container` | 圆柱；标称容积 1.5 mL；高 32.2 mm；瓶身直径 11.6 mm；瓶口外径 8.5 mm；玻璃 |
+| `CAAAR` | 耐压瓶 | `container` | 高 114 mm；直径 29 mm；玻璃 |
+| `CAAAS` | 高温煅烧坩埚 | `container` | 圆柱；高 42 mm；上径 29 mm；下径 24.5 mm；石英 |
+| `CAAAT` | 10 mL 耐压反应管 | `container` | 圆柱；标称容积 10 mL；高 90 mm；直径 12 mm；玻璃 |
+| `CAAAU` | 料斗 | `container` | 尺寸和材质待测 |
+| `CAAAV` | 固体进样料斗 | `container` | 长 68 mm；宽 41 mm；高 48 mm |
+| `CAAAW` | XRD 坩埚 | `container` | 方形；长宽 38 mm；高 8 mm；圆角；塑料 |
+| `CAAAX` | 处理管式炉坩埚 | `container` | 正方形；长宽 100 mm；圆角；玻璃/塑料 |
+| `CAAAY` | 反应管式炉坩埚 | `container` | 长方体；长 50 mm；宽 10 mm；高 10 mm；玻璃 |
+| `CAAAZ` | 纽扣电池 | `carrier` | 直径 20 mm；高 1 mm；金属 |
+| `CAABA` | 时间分辨玻璃片 | `carrier` | 尺寸和材质待测 |
+| `CAABB` | 5 mL 比色皿 | `container` | 标称容积 5 mL；长宽 12.5 mm；高 47 mm |
+| `CAABC` | 20 孔电镜板容器 | `container` | 长 60 mm；宽 44 mm；厚 3 mm；20 孔 |
+| `CAABD` | 耐腐蚀 50 mL 瓶 | `container` | 圆柱；标称容积 50 mL；高 104.5 mm；瓶身直径 47 mm；瓶口外径 25 mm；玻璃 |
+| `CAABE` | 高压釜 | `container` | 圆柱；高 87 mm；内径 38.5 mm；外径 57.5 mm；金属 |
+| `CAABF` | 核磁中转原料瓶 | `container` | 圆柱；高 45 mm；瓶身外径 15 mm；瓶口内径 8 mm；玻璃 |
+| `CAABG` | 核磁溶剂瓶 | `container` | 高 113 mm；瓶身外径 35 mm；瓶口内径 13 mm；玻璃 |
+| `CAABH` | 核磁原料瓶 | `container` | 高 60 mm；瓶身直径 17 mm；瓶口内径 9 mm |
+| `CAABI` | 核磁管 | `container` | 长 177 mm；瓶身直径 5 mm |
+| `CAABJ` | 3 mL 比色皿 | `container` | 标称容积 3 mL；长宽 12.4 mm；高 52 mm；玻璃 |
+| `CAABK` | 荧光玻片 | `carrier` | 长 75 mm；宽 25.2 mm |
+| `CAABL` | 组合化学 64 容器 | `container` | 长 180 mm；宽 180 mm；高 19 mm；135° 钝角；金属+玻璃 |
+| `CAABM` | 组合化学 96 容器 | `container` | 长 127 mm；宽 85 mm；高 14.4 mm；塑料 |
+| `CAABQ` | 光刻片 | `carrier` | 尺寸和材质待测 |
+| `CAABR` | 玻碳片 | `carrier` | 尺寸和材质待测 |
+| `CAABS` | 质谱板 | `carrier` | 尺寸和材质待测 |
+| `CAABT` | 100 mL 试管 | `container` | 标称容积 100 mL；直径 30 mm；高 150 mm |
+| `CAABV` | 抽屉 | `fixture` | 尺寸和材质待测 |
+| `CAABX` | 100 mL 浓缩瓶 | `container` | 标称容积 100 mL；尺寸和材质待测 |
+
+工作簿中标记为“删除，映射”的旧名称不是独立类型，不应作为新的 `object_type_id` 声明；它们可在 `aliases[]` 中保留为兼容名称。对于同一类型的不同物理变体，应通过不同 `variant_id` 分别声明，而不是用单一名称覆盖不同尺寸。
 
 ## 运行时状态
 

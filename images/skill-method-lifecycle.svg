@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
+  <title id="title">ALL 技能提取、方法生成、验证与执行闭环</title>
+  <desc id="desc">从 FSP 能力数据到设备执行证据的六阶段流程图，包含质量和验证失败后的回退路径。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#244a9b"/></marker>
+    <marker id="return" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#c65b18"/></marker>
+    <style>
+      .title{font:700 32px Arial,sans-serif;fill:#102c62}.lane{font:700 17px Arial,sans-serif;fill:#3663ad}.node-title{font:700 18px Arial,sans-serif;fill:#14244a}.node-text{font:14px Arial,sans-serif;fill:#40516f}.small{font:13px Arial,sans-serif;fill:#8a4b1a}.flow{stroke:#244a9b;stroke-width:3;fill:none;marker-end:url(#arrow)}.back{stroke:#c65b18;stroke-width:3;fill:none;marker-end:url(#return);stroke-dasharray:8 6}.card{stroke:#8ba9dd;stroke-width:2;rx:16}.chip{font:600 13px Arial,sans-serif;fill:#24539b}
+    </style>
+  </defs>
+  <rect width="1440" height="650" fill="#f8fbff"/>
+  <text x="720" y="50" text-anchor="middle" class="title">技能提取、函数式方法、验证与执行闭环</text>
+  <rect x="45" y="82" width="1350" height="245" rx="20" fill="#edf5ff" stroke="#bdd3f4"/>
+  <text x="72" y="116" class="lane">定义与生成</text>
+  <rect x="45" y="367" width="1350" height="235" rx="20" fill="#f3faf4" stroke="#bfe0c2"/>
+  <text x="72" y="401" class="lane">验证与运行</text>
+
+  <g transform="translate(80 148)">
+    <rect class="card" width="190" height="132" fill="#fff"/>
+    <text x="95" y="34" text-anchor="middle" class="node-title">FSP 能力数据</text>
+    <text x="95" y="62" text-anchor="middle" class="node-text">对象 · 控制 · 系统</text>
+    <text x="95" y="88" text-anchor="middle" class="node-text">设备标识 · 修订号</text>
+    <text x="95" y="113" text-anchor="middle" class="chip">设备事实</text>
+  </g>
+  <g transform="translate(335 148)">
+    <rect class="card" width="200" height="132" fill="#fff"/>
+    <text x="100" y="34" text-anchor="middle" class="node-title">技能提取</text>
+    <text x="100" y="62" text-anchor="middle" class="node-text">解析字段和嵌套参数</text>
+    <text x="100" y="88" text-anchor="middle" class="node-text">保留状态与约束</text>
+    <text x="100" y="113" text-anchor="middle" class="chip">设备技能描述</text>
+  </g>
+  <g transform="translate(600 148)">
+    <rect class="card" width="200" height="132" fill="#fff"/>
+    <text x="100" y="34" text-anchor="middle" class="node-title">质量评估</text>
+    <text x="100" y="62" text-anchor="middle" class="node-text">完整性 · 可解析性</text>
+    <text x="100" y="88" text-anchor="middle" class="node-text">约束与状态闭合</text>
+    <text x="100" y="113" text-anchor="middle" class="chip">准入报告</text>
+  </g>
+  <g transform="translate(865 148)">
+    <rect class="card" width="215" height="132" fill="#fff"/>
+    <text x="107" y="34" text-anchor="middle" class="node-title">函数式方法生成</text>
+    <text x="107" y="62" text-anchor="middle" class="node-text">选择已准入函数</text>
+    <text x="107" y="88" text-anchor="middle" class="node-text">固定参数与版本快照</text>
+    <text x="107" y="113" text-anchor="middle" class="chip">候选方法</text>
+  </g>
+  <g transform="translate(1145 148)">
+    <rect class="card" width="210" height="132" fill="#fff"/>
+    <text x="105" y="34" text-anchor="middle" class="node-title">方法验证</text>
+    <text x="105" y="62" text-anchor="middle" class="node-text">函数 · 参数 · 状态</text>
+    <text x="105" y="88" text-anchor="middle" class="node-text">科学语义审查</text>
+    <text x="105" y="113" text-anchor="middle" class="chip">仿真报告</text>
+  </g>
+  <path class="flow" d="M270 214 H325"/><path class="flow" d="M535 214 H590"/><path class="flow" d="M800 214 H855"/><path class="flow" d="M1080 214 H1135"/>
+
+  <g transform="translate(270 438)">
+    <rect class="card" width="235" height="122" fill="#fff"/>
+    <text x="118" y="33" text-anchor="middle" class="node-title">绑定与执行计划</text>
+    <text x="118" y="61" text-anchor="middle" class="node-text">函数映射设备与指令</text>
+    <text x="118" y="87" text-anchor="middle" class="node-text">生成可下发步骤</text>
+    <text x="118" y="108" text-anchor="middle" class="chip">执行计划 JSON</text>
+  </g>
+  <g transform="translate(675 438)">
+    <rect class="card" width="235" height="122" fill="#fff"/>
+    <text x="118" y="33" text-anchor="middle" class="node-title">FSP 任务执行</text>
+    <text x="118" y="61" text-anchor="middle" class="node-text">下发 · 异步查询 · 取消</text>
+    <text x="118" y="87" text-anchor="middle" class="node-text">读取真实对象与系统状态</text>
+    <text x="118" y="108" text-anchor="middle" class="chip">任务结果与诊断</text>
+  </g>
+  <g transform="translate(1080 438)">
+    <rect class="card" width="235" height="122" fill="#fff"/>
+    <text x="118" y="33" text-anchor="middle" class="node-title">证据与状态提交</text>
+    <text x="118" y="61" text-anchor="middle" class="node-text">确认实际状态变化</text>
+    <text x="118" y="87" text-anchor="middle" class="node-text">保存结果和可追溯证据</text>
+    <text x="118" y="108" text-anchor="middle" class="chip">研究对象新状态</text>
+  </g>
+  <path class="flow" d="M1250 280 V426 H387"/><path class="flow" d="M505 499 H665"/><path class="flow" d="M910 499 H1070"/>
+  <path class="back" d="M700 280 V345 H435 V290"/><text x="510" y="336" class="small">评估不通过：返回补齐能力描述</text>
+  <path class="back" d="M1240 426 V365 H972 V290"/><text x="988" y="356" class="small">验证阻断：依据诊断重新生成候选方法</text>
+  <path class="back" d="M1198 560 V590 H792 V570"/><text x="902" y="616" class="small">执行失败或结果未知：重新读取状态后回到验证</text>
+</svg>
