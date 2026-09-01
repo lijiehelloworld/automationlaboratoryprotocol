@@ -35,15 +35,23 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
   "input_schema": {
     "type": "object",
     "properties": {
-      "max_age_ms": {"type": "integer", "minimum": 0}
+      "max_age_ms": {
+        "title": "最大数据年龄",
+        "description": "允许返回缓存观测值的最大年龄；零表示必须获取当前观测。",
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 60000,
+        "default": 1000,
+        "x-all-unit": "ms"
+      }
     },
     "additionalProperties": false
   },
   "output_schema": {
     "type": "object",
     "properties": {
-      "value": {"type": "number"},
-      "unit": {"const": "Cel"}
+      "value": {"description": "观测到的温度数值。", "type": "number"},
+      "unit": {"description": "温度单位。", "const": "Cel"}
     },
     "required": ["value", "unit"],
     "additionalProperties": false
@@ -80,7 +88,15 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
   "input_schema": {
     "type": "object",
     "properties": {
-      "target_location": {"type": "string", "minLength": 1}
+      "target_location": {
+        "title": "目标位置",
+        "description": "研究对象移动后的设备内位置标识，必须来自设备能力清单声明的位置集合。",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[a-z][a-z0-9_.-]*$",
+        "x-all-enum-source": "objects.object_types[].allowed_locations"
+      }
     },
     "required": ["target_location"],
     "additionalProperties": false
@@ -88,7 +104,7 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
   "output_schema": {
     "type": "object",
     "properties": {
-      "final_location": {"type": "string"}
+      "final_location": {"description": "设备确认的最终位置标识。", "type": "string", "minLength": 1, "maxLength": 128}
     },
     "required": ["final_location"],
     "additionalProperties": false
@@ -151,6 +167,91 @@ description: "ALL 操作定义、读取、写入、调用和长任务接口"
 | `execution` | `ExecutionDefinition` | 是 | 副作用、异步任务、输入、取消、超时和结果保留能力 |
 
 操作定义变化必须递增能力清单修订号。操作执行产生的状态变化只递增运行状态或研究对象修订号。
+
+## 参数数据结构与约束
+
+`input_schema` 是操作参数的**唯一机器可读来源**。不得再以独立 `parameters` 数组重复声明同一变量；展示型参数表、客户端表单和服务端校验都必须从 `input_schema` 生成或与其逐项验证一致。
+
+所有操作的 `input_schema` 必须满足：
+
+```text
+type = object
+properties = 已声明变量集合
+required = 必填变量集合
+additionalProperties = false
+```
+
+每个变量必须有 `description` 和明确 `type`（或明确的类型联合）。变量在下列情形还必须声明相应约束：
+
+| 变量情况 | 必须声明的字段 | 规则 |
+| --- | --- | --- |
+| 必填变量 | 顶层 `required` | 变量名只能在 `properties` 中出现一次；不得用自然语言代替必填规则 |
+| 可选变量 | `default`（有默认值时） | 未提供时使用默认值；提供 `null` 不等于未提供 |
+| 整数或数值 | `minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum` 中适用项 | 只要存在安全、物理或设备范围，就必须给出上下界 |
+| 枚举变量 | `enum` 或 `const` | 枚举值必须稳定、同类型；面向人含义写在 `description` |
+| 字符串 | `minLength`、`maxLength`、`pattern` 中适用项 | 标识、路径、名称等必须限制长度；格式可机器判定时必须给出 `pattern` 或 `format` |
+| 数组 | `items`、`minItems`、`maxItems`、`uniqueItems` 中适用项 | 元素类型和数量限制必须明确 |
+| 对象 | `properties`、`required`、`additionalProperties` | 嵌套对象同样必须关闭未声明字段，除非该字段明确声明为扩展对象 |
+| 带单位数值 | `x-all-unit`，或 `x-all-canonical-unit`、`x-all-minimum`、`x-all-maximum` | 固定单位使用 `x-all-unit`；可换算单位使用 `value` 与 `unit` 对象，并以规范单位和换算后的上下界校验 |
+| 动态枚举 | `x-all-enum-source` | 只能引用同一设备能力清单或当前状态中已公开的字段路径；服务端必须在校验前解析其当前允许值 |
+| 可空变量 | `type` 联合中显式包含 `null` | 不得用空字符串、零或缺失字段暗示未知值 |
+
+`x-all-unit`、`x-all-canonical-unit` 和 `x-all-enum-source` 是 ALL 定义的 Schema 扩展关键字；除此之外，约束语义遵循 JSON Schema 2020-12。服务端必须先把可换算量转换到 `x-all-canonical-unit`，再比较上下界。
+
+### 完整参数示例
+
+以下 Schema 同时展示必填、默认值、数值范围、枚举、字符串、数组和带单位数值的表达方式：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "mode": {
+      "title": "运行模式",
+      "description": "设备已声明的运行模式。",
+      "type": "string",
+      "enum": ["standard", "gentle"]
+    },
+    "duration": {
+      "title": "持续时间",
+      "description": "操作持续时间，范围以秒为准。",
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 3600,
+      "default": 60,
+      "x-all-unit": "s"
+    },
+    "volume": {
+      "title": "体积",
+      "description": "输入体积；服务端换算为微升后校验范围。",
+      "type": "object",
+      "properties": {
+        "value": {"description": "体积数值。", "type": "number", "exclusiveMinimum": 0},
+        "unit": {"description": "体积单位。", "type": "string", "enum": ["uL", "mL"]}
+      },
+      "required": ["value", "unit"],
+      "additionalProperties": false,
+      "x-all-canonical-unit": "uL",
+      "x-all-minimum": 1,
+      "x-all-maximum": 1000
+    },
+    "labels": {
+      "title": "标签",
+      "description": "附加标签；每个标签只允许小写字母、数字、短横线和下划线。",
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 32, "pattern": "^[a-z0-9_-]+$"},
+      "minItems": 0,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "default": []
+    }
+  },
+  "required": ["mode", "volume"],
+  "additionalProperties": false
+}
+```
+
+其中 `x-all-minimum` 和 `x-all-maximum` 只适用于带 `value`/`unit` 的可换算量对象，数值以 `x-all-canonical-unit` 表示。`minimum` 和 `maximum` 仍只适用于当前 JSON 数值本身。
 
 ## 操作状态转换契约
 
