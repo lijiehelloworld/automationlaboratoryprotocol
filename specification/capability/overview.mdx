@@ -130,6 +130,62 @@ module: Synthesis
 | `Constraints` | 表达跨参数和物理强制约束 |
 | `Returns` | 定义成功结果的字段、类型和含义 |
 
+### 完整产物关系
+
+设备能力从提取到可使用，需要形成以下彼此关联的产物。它们均应记录同一 `device_id` 和来源 `revision`，使任一环节可以追溯到设备接口事实。
+
+```text
+能力数据集
+  → 设备技能描述
+  → 质量评估报告
+  → 函数定义与公共类型
+  → 仿真报告
+  → 已绑定执行计划
+```
+
+| 产物 | 输入 | 必需字段 | 作用 |
+| --- | --- | --- | --- |
+| 设备技能描述 | 能力数据集 | 设备标识、来源修订号、对象、操作、系统、参数、约束、状态变化、返回值 | 形成可读且可检索的设备能力说明 |
+| 质量评估报告 | 设备技能描述 | `total_score`、`passed`、检查明细、修订要求 | 判断说明是否足以进入能力库 |
+| 函数定义与公共类型 | 准入通过的说明 | 函数签名、参数类型、前置条件、约束、状态变化、返回值、诊断类型 | 形成可计算、可仿真的调用契约 |
+| 仿真报告 | 候选方法与函数定义 | 版本快照、检查结果、状态提交结论、诊断 | 判断候选方法能否转换为执行计划 |
+| 已绑定执行计划 | 通过仿真的方法 | 设备标识、操作、参数、路径、未知步骤 | 形成可下发的结构化计划 |
+
+产物之间不得只凭名称关联；必须使用设备标识、操作标识和来源修订号建立确定映射。
+
+### 设备技能描述的最小结构
+
+设备技能描述应为每条操作完整保留接口信息。以下结构示例说明产物字段，不绑定任何具体存储格式：
+
+```json
+{
+  "device_id": "2002186824385539",
+  "source_revision": "12",
+  "objects": [
+    {
+      "object_type_id": "container.sample_vial",
+      "properties": ["shape", "diameter_mm", "material"],
+      "states": ["container_status", "sample_status"]
+    }
+  ],
+  "operations": [
+    {
+      "command_id": "open_caps",
+      "initial_state": {"container_status": ["有盖"]},
+      "parameters": ["container_type", "container_count", "container_ids"],
+      "constraints": ["1 <= container_count <= 10"],
+      "effects": {"container_status": "有盖→无盖"},
+      "returns": ["opened_bottles", "container_status", "sample_status"]
+    }
+  ],
+  "system": {
+    "safety_fences": ["仅在设备空闲且容器状态满足前置条件时执行"]
+  }
+}
+```
+
+其中 `parameters`、`constraints`、`effects` 和 `returns` 在实际产物中必须是完整对象定义，不得仅保留字段名称。上例仅用于展示各区域如何关联。
+
 ## 字段映射
 
 | FSP 数据 | 设备技能描述 |

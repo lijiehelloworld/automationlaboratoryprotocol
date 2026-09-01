@@ -92,6 +92,122 @@ def add_liquid_with_material(
 | 返回值 | 字段、类型、单位和语义确定 |
 | 异常或诊断 | 说明失败原因、影响字段和是否可重试 |
 
+## 函数定义格式
+
+每个已准入操作都必须有一份可解析的函数定义。该定义只描述调用契约，不承载设备驱动实现；设备实际控制仍通过 FSP 接口完成。
+
+函数定义由函数签名和固定顺序的八个说明区块组成：
+
+```text
+Summary
+Preconditions
+Cautions
+Args
+Constraints
+State Changes
+Returns
+Example
+```
+
+| 区块 | 必需内容 | 用途 |
+| --- | --- | --- |
+| `Summary` | 一句话说明操作目的 | 便于检索和选择操作 |
+| `Preconditions` | 调用前必须满足的对象、样品和系统状态 | 阻止状态不满足的调用 |
+| `Cautions` | 跨步骤注意事项和设备差异 | 保持多步方法的上下文一致 |
+| `Args` | 参数名称、类型、单位、范围、枚举、默认值和嵌套结构 | 构造可验证的调用参数 |
+| `Constraints` | 可计算的单参数或跨参数规则，以及硬性或建议级别 | 为仿真和执行提供统一判断依据 |
+| `State Changes` | 每个状态字段的执行前后值，包含保持不变的字段 | 让状态仿真与实际结果可以比对 |
+| `Returns` | 成功结果的字段、类型、单位和含义 | 让后续步骤消费确定结果 |
+| `Example` | 一组合法参数、调用方式和结果使用方式 | 用于调用生成与人工核对 |
+
+### 参数与结果类型
+
+函数签名不得把结构化参数简化为无约束字典。数组中的对象、嵌套参数和操作返回值必须有稳定名称和可检查字段。公共类型至少包括：
+
+```text
+容器类型与状态枚举
+嵌套操作参数类型
+StepResult：操作结果、状态变化与诊断
+```
+
+`StepResult` 至少应包含以下字段：
+
+```json
+{
+  "status": "succeeded",
+  "result": {
+    "containers": []
+  },
+  "state_changes": [],
+  "diagnostics": []
+}
+```
+
+| 字段 | 作用 |
+| --- | --- |
+| `status` | 标识成功、失败、取消或结果未知 |
+| `result` | 保存与操作 `returns` 一致的结果字段 |
+| `state_changes` | 保存设备确认或仿真确认的实际状态变化 |
+| `diagnostics` | 保存失败原因、影响字段和可处理建议 |
+
+### 函数定义示例
+
+以下非规范性示例以开盖操作说明完整契约。函数体使用 `...` 表示定义文件不实现设备控制逻辑。
+
+```python
+def open_caps(
+    container_type: Literal["进样瓶", "50ml耐热瓶"],
+    container_count: int,
+    container_ids: list[int],
+    open_cap_bottle_ids: list[OpenCapBottle],
+    keep_cap: int = 1,
+) -> StepResult:
+    """
+    Summary:
+        打开指定容器的瓶盖。
+
+    Preconditions:
+        容器状态必须为“有盖”。
+
+    Cautions:
+        后续关盖操作必须使用本次保留的瓶盖。
+
+    Args:
+        container_count: 范围为 1..10。
+        container_ids: 最大编号不得大于 container_count。
+        keep_cap: 枚举值为 0 或 1。
+
+    Constraints:
+        MUST: 1 <= container_count <= 10；违反类别为参数范围错误。
+        MUST: max(container_ids) <= container_count；违反类别为容器约束错误。
+        MUST: 每个 bottle_id 属于 container_ids；违反类别为容器约束错误。
+
+    State Changes:
+        container_status: 有盖 → 无盖。
+        sample_status: 保持不变。
+
+    Returns:
+        返回已开盖容器编号、容器状态、样品状态和诊断。
+
+    Example:
+        对 1、2 号进样瓶调用，返回 opened_bottles=[1, 2]。
+    """
+    ...
+```
+
+## 校验与状态提交
+
+`MUST` 表示物理安全、状态正确性或数据完整性的硬性条件；任一 `MUST` 失败都必须阻断执行并进入 `diagnostics`。`SHOULD` 表示不会破坏安全性的建议；违反时写入 `warnings`，不单独阻断执行。
+
+校验和状态更新必须使用两阶段顺序：
+
+```text
+第一阶段：检查全部 MUST 与 SHOULD 条件，记录 errors[] 与 warnings[]
+第二阶段：仅当 errors[] 为空时，写入声明的 State Changes 并生成结果
+```
+
+不得边校验边更新状态，也不得在发现第一项失败后写入部分成功状态。函数定义中的每条硬性约束必须能在仿真或实际执行诊断中找到对应结果。
+
 ## 版本规则
 
 - FSP 能力修订号是设备事实版本；
