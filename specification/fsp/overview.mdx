@@ -44,16 +44,16 @@ FSP 描述统一语义，不要求设备采用相同底层技术：
 
 ## 方法摘要
 
-| 方法 | 所需权限 | 作用 |
-| --- | --- | --- |
-| `fsp/discover` | `fsp.read` | 发现可见设备 |
-| `fsp/get_capabilities` | `fsp.read` | 获取对象、操作和系统定义 |
-| `fsp/read` | `fsp.read` | 读取对象或系统当前状态 |
-| `fsp/write` | `fsp.execute` | 写入设备已声明为可写的目标状态 |
-| `fsp/invoke` | `fsp.execute` | 调用已声明操作 |
-| `fsp/get_task` | `fsp.read` | 读取异步任务进度和结果 |
-| `fsp/cancel_task` | `fsp.execute` | 请求取消可取消任务 |
-| `fsp/subscribe` | `fsp.read` | 订阅状态或任务事件 |
+| 方法 | 作用 |
+| --- | --- |
+| `fsp/discover` | 发现设备 |
+| `fsp/get_capabilities` | 获取对象、操作和系统定义 |
+| `fsp/read` | 读取对象或系统当前状态 |
+| `fsp/write` | 写入设备已声明为可写的目标状态 |
+| `fsp/invoke` | 调用已声明操作 |
+| `fsp/get_task` | 读取异步任务进度和结果 |
+| `fsp/cancel_task` | 请求取消可取消任务 |
+| `fsp/subscribe` | 订阅状态或任务事件 |
 
 ## 设备要求
 

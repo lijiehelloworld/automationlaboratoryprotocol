@@ -2,7 +2,7 @@
 
 Automation Laboratory Language（ALL，自动化实验室语言）规范文档。
 
-ALL 使用 HTTPS 远程连接。其设备通信部分 FSP 采用服务账户和 Bearer Token，并以对象、操作、系统三个分区描述工作站能力。
+ALL 使用 HTTPS 远程连接。其设备通信部分 FSP 以对象、操作、系统三个分区描述工作站能力。
 
 ## 本地预览
 

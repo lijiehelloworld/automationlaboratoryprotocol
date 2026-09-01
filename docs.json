@@ -39,8 +39,7 @@
             "pages": [
               "specification/index",
               "specification/overview",
-              "specification/base-protocol",
-              "specification/authentication"
+              "specification/base-protocol"
             ]
           },
           {
@@ -89,34 +88,6 @@
               "specification/errors",
               "specification/security-and-safety",
               "specification/conformance"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "注册中心",
-        "groups": [
-          {
-            "group": "注册中心",
-            "pages": [
-              "registry/about",
-              "registry/quickstart",
-              "registry/faq"
-            ]
-          },
-          {
-            "group": "发布",
-            "pages": [
-              "registry/publishing/metadata",
-              "registry/publishing/authentication",
-              "registry/publishing/versioning"
-            ]
-          },
-          {
-            "group": "使用",
-            "pages": [
-              "registry/consuming/discovery",
-              "registry/consuming/trust-and-security"
             ]
           }
         ]

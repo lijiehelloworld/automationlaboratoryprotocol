@@ -7,7 +7,7 @@ description: "协议错误、执行失败和恢复语义"
 
 | 类型 | 返回位置 | 说明 |
 | --- | --- | --- |
-| 协议错误 | JSON-RPC `error` | 请求尚未进入设备执行，例如消息、鉴权、方法或参数错误 |
+| 协议错误 | JSON-RPC `error` | 请求尚未进入设备执行，例如消息、方法或参数错误 |
 | 执行失败 | 普通 `result` 或任务结果 | 设备操作已经受理或开始，必须保留实际状态与诊断 |
 
 ## 协议错误示例
@@ -66,8 +66,6 @@ description: "协议错误、执行失败和恢复语义"
 | 编码 | 适用情况 |
 | --- | --- |
 | `unsupported_version` | 协议版本不支持 |
-| `authentication_failed` | 身份认证失败 |
-| `permission_denied` | 权限不足 |
 | `device_not_found` | 目标设备不可见或不存在 |
 | `capability_not_found` | 对象、操作或系统能力未声明 |
 | `invalid_parameter` | 参数类型、单位或结构错误 |
@@ -89,4 +87,4 @@ description: "协议错误、执行失败和恢复语义"
 - `revision_conflict`、`stale_state` 和 `result_unknown` 出现后，调用方必须重新读取相关对象与系统状态；
 - `retryable=false` 时不得原样自动重试；
 - 操作已经开始时，网络超时不得被解释为失败或成功；
-- 服务端不得在错误消息中返回访问令牌、设备秘密、内部堆栈或不可见资源信息。
+- 服务端不得在错误消息中返回设备秘密、内部堆栈或不可见资源信息。
