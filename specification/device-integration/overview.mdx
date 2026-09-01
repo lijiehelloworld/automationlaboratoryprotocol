@@ -1,0 +1,104 @@
+---
+title: "设备接入与接口适配"
+description: "把现有 API、SDK 和驱动映射为 FSP 的独立接入模块"
+---
+
+## 模块定位
+
+设备接入与接口适配是独立的实现说明，不属于对象、操作或系统数据本身。FSP 不要求工作站修改原有接口，只要求适配后能够提供统一能力描述和调用行为。
+
+```text
+现有设备接口
+  → FSP 适配器
+      → 对象说明
+      → 操作说明
+      → 系统说明
+```
+
+## 可以适配的接口
+
+- HTTP 或 REST API；
+- WebSocket、RPC 或消息接口；
+- 厂商 SDK；
+- 本地驱动；
+- 串口、TCP 或其他设备协议。
+
+FSP 对外仍使用统一远程消息。底层接口类型不影响上层能力语义。
+
+## 最低接入要求
+
+设备服务或适配器至少能够：
+
+1. 返回稳定设备标识和能力修订号；
+2. 说明支持的容器类型及可观察状态；
+3. 说明操作名称、参数、约束、状态变化和返回值；
+4. 返回系统状态和安全围栏；
+5. 把 `fsp/invoke` 映射到真实接口；
+6. 把设备结果和错误转换为 FSP 返回值与诊断。
+
+## 不作强制规定的内容
+
+本规范不统一要求：
+
+- 设备 API URL 结构；
+- HTTP 方法；
+- SDK 类名；
+- 串口帧格式；
+- 驱动目录；
+- 设备内部队列；
+- 厂商错误码。
+
+这些内容可以保存在部署配置中，不需要进入能力数据集。
+
+## 映射原则
+
+| 现有信息 | FSP 表达 |
+| --- | --- |
+| 设备支持的容器及状态 | `objects[]` |
+| 设备 API 或函数 | `operations[]` |
+| 参数说明 | `operations[].parameters` |
+| 前置条件和结果状态 | `initial_state` 与 `effects` |
+| 返回值 | `returns` |
+| 设备忙闲、故障和能力概要 | `system` |
+| 设备保护规则 | `system.safety_fences` |
+
+## 适配器边界
+
+适配器可以翻译名称、单位和错误码，但不得：
+
+- 放宽设备原有物理限制；
+- 隐藏强制安全条件；
+- 声明设备不存在的操作；
+- 在调用失败时伪造成功状态；
+- 让模型可读说明覆盖真实接口定义。
+
+## 调用映射示意
+
+以下伪代码只说明适配顺序，参数名称沿用 `skill_all` 的 `add_liquid_with_material` 定义：
+
+```python
+def invoke(command_id, arguments, expected_revision):
+    # 先确认调用方使用的是当前设备状态，避免过期状态下发动作。
+    verify_revision(expected_revision)
+
+    # 再按 FSP 能力数据校验类型、枚举、范围、嵌套字段和多参数约束。
+    validate_arguments(command_id, arguments)
+
+    # 将稳定指令标识映射到设备已经存在的 API、SDK 函数或驱动入口。
+    if command_id == "add_liquid_with_material":
+        return existing_device_interface.add_liquid_with_material(
+            container_type=arguments["container_type"],
+            container_count=arguments["container_count"],
+            container_ids=arguments["container_ids"],
+            dispensing_plan=arguments["dispensing_plan"],
+        )
+
+    # 未在能力数据中声明的指令必须拒绝，不能猜测底层接口。
+    raise CapabilityNotFound(command_id)
+```
+
+适配器输出必须再转换为操作定义中的 `returns`、实际状态变化和 `diagnostics`。若底层接口只返回厂商状态码，适配器需要保留原始诊断引用并映射为 FSP 标准诊断，不能把未知结果写成成功。
+
+## 接入后的下一步
+
+FSP 能力数据进入[能力供给与准入](/specification/capability/overview)，通过质量评估后才能进入合格设备能力库并用于实验方法生成。

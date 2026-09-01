@@ -1,0 +1,87 @@
+---
+title: "合格设备能力库"
+description: "保存通过评估的设备能力说明、函数式能力和版本关系"
+---
+
+## 作用
+
+合格设备能力库向实验编排代理提供经过质量检查的设备能力。它不是另一套设备注册信息，而是 FSP 能力数据、设备能力说明、质量报告和函数式能力之间的可追溯集合。
+
+## 准入输入
+
+每次准入至少包含：
+
+```text
+FSP 设备标识和能力修订号
+设备能力说明
+质量评估报告
+由能力说明生成的函数式能力
+```
+
+函数式能力必须保留现有函数签名、前置条件、约束、状态变化、返回值和异常说明。
+
+## 库中实际产物
+
+现有 `skill_all` 使用以下两个文件层次：
+
+```text
+自然语言 SKILL.md
+函数式 SKILL.md
+```
+
+函数式能力示例：
+
+```python
+def open_caps(
+    container_type,
+    container_count,
+    container_ids,
+    open_cap_bottle_ids,
+    keep_cap
+) -> StepResult:
+    ...
+
+def close_caps(
+    container_type,
+    container_count,
+    container_ids,
+    close_cap_bottle_ids
+) -> StepResult:
+    ...
+
+def add_liquid_with_material(
+    container_type,
+    container_count,
+    container_ids,
+    dispensing_plan
+) -> StepResult:
+    ...
+```
+
+本规范不额外创造一个与现有文件并行的能力记录 JSON。实现可以使用数据库建立索引，但对外语义以通过评估的能力说明和函数式能力为准。
+
+## 版本规则
+
+- FSP 能力修订号是设备事实版本；
+- 自然语言能力说明必须记录其来源修订号；
+- 函数式能力必须与自然语言能力说明和公共类型使用同一版本快照；
+- 任一层变化都必须使依赖它的实验方法重新验证；
+- 版本不一致时不得生成下游执行 JSON。
+
+## 查询输出
+
+实验编排代理查询能力库时至少需要获得：
+
+```text
+工作站编码
+工作站名称
+能力说明
+可用操作
+函数签名
+适用容器和状态
+参数约束
+来源修订号
+质量评估结果
+```
+
+查询实现可以是文件索引、数据库或远程服务，ALL 不规定内部存储方式。

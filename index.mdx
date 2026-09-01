@@ -1,35 +1,54 @@
 ---
 title: "Automation Laboratory Language"
-description: "自动化实验室语言概览"
+description: "ALL 自动化实验室语言与 FSP 设备通信规范"
 ---
 
-Automation Laboratory Language（ALL，自动化实验室语言）定义 Agent、自动化系统和用户应用远程发现并调用实验室设备的统一通信能力。
+Automation Laboratory Language（ALL，自动化实验室语言）把科学目标、研究对象、函数式实验方法和物理设备连接成可计算、可验证、可追溯的实验闭环。
+
+Function State Protocol（FSP，函数状态协议）位于 ALL 内部，负责以对象、操作、系统三类数据统一发现和调用实验室设备。设备可以保留原有 API、SDK 或驱动，通过适配器接入 FSP。
 
 <CardGroup cols={2}>
   <Card title="阅读规范" icon="book" href="/specification/overview">
     查看协议边界、消息语义、接口和符合性要求。
   </Card>
   <Card title="查看总体设计" icon="diagram-project" href="/architecture/overview">
-    理解系统、对象、操作和 Workflow 四模块关系。
+    理解 ALL、FSP、能力准入、方法生成和执行证据关系。
   </Card>
   <Card title="快速开始" icon="bolt" href="/quickstart">
-    按授权、发现、读取和执行顺序接入远程服务。
+    从设备发现到函数式实验方法执行了解最短路径。
   </Card>
   <Card title="名词解释" icon="spell-check" href="/architecture/terms">
     查询协议中的中英文术语和职责边界。
   </Card>
 </CardGroup>
 
-## 四个模块
+## 核心组成
 
-ALL 只定义四个标准方法命名空间：
+<CardGroup cols={2}>
+  <Card title="FSP 函数状态协议" href="/specification/fsp/overview">
+    发现设备，并以对象、操作、系统三块描述能力。
+  </Card>
+  <Card title="能力供给与准入" href="/specification/capability/overview">
+    从 FSP 数据生成设备能力说明并完成质量评估。
+  </Card>
+  <Card title="研究对象与状态" href="/specification/research/objects">
+    组织科学身份、样品、容器、状态、证据和来源。
+  </Card>
+  <Card title="函数式实验方法" href="/specification/methods/overview">
+    生成、验证、绑定和执行可计算实验方法。
+  </Card>
+</CardGroup>
 
-- `system/*`：身份授权后的发现、能力清单、状态和事件。
-- `objects/*`：研究对象的身份、样品、容器、证据和来源。
-- `operations/*`：读取、写入、调用和操作任务。
-- `workflows/*`：Workflow 的查询、校验和运行。
+## 设备接入原则
+
+- 工作站只需把对象、操作和系统说清楚；
+- 对象只描述设备可识别的容器及状态；
+- 操作说明函数、参数、约束、状态变化和返回值；
+- 系统说明总体能力、运行状态和安全围栏；
+- FSP 不要求设备采用统一底层接口；
+- 顺序、有限循环、条件、并行汇合和受保护区间由函数式实验方法表达。
 
 ## 规范状态
 
-- 版本：`2026-08-31`
-- 状态：草案 0.1
+- 版本：`2026-09-01`
+- 状态：草案 0.2

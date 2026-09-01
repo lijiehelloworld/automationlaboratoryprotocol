@@ -1,0 +1,153 @@
+---
+title: "基础协议"
+description: "ALL 远程消息、版本、结果和统一 FSP 方法命名规范"
+---
+
+## 协议边界
+
+Automation Laboratory Language（ALL）规定调用方、实验方法服务与设备服务之间可观察的通信语义。Function State Protocol（FSP）是 ALL 内部用于设备能力发现、状态读取、操作调用和结果返回的设备通信协议。
+
+ALL 不规定服务端内部的驱动、队列、数据库、控制器或设备总线。现有设备可以通过适配器接入，不需要修改固件或放弃原有接口。
+
+## 远程连接
+
+正式部署应当提供稳定的 HTTPS 端点：
+
+```text
+POST https://lab.example.com/all
+```
+
+基础版本使用 JSON-RPC 2.0 请求与响应。一个 HTTP 请求只包含一个协议请求，不使用 JSON-RPC 批处理。
+
+## 请求消息
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-0001",
+  "method": "fsp/get_capabilities",
+  "params": {
+    "device_id": "2002186824385539",
+    "if_revision": "11"
+  },
+  "meta": {
+    "protocol_version": "2026-09-01",
+    "caller": "laboratory-agent"
+  }
+}
+```
+
+| 字段 | 类型 | 是否必需 | 说明 |
+| --- | --- | --- | --- |
+| `jsonrpc` | `string` | 是 | 固定为 `2.0` |
+| `id` | `string` | 是 | 调用方生成的请求标识 |
+| `method` | `string` | 是 | 标准方法，必须位于 `fsp/*` 命名空间 |
+| `params` | `object` | 是 | 方法参数，没有参数时使用空对象 |
+| `meta.protocol_version` | `string` | 是 | 调用方使用的协议版本 |
+| `meta.caller` | `string` | 否 | 调用方名称，用于审计和诊断，不作为授权依据 |
+
+## 统一方法命名空间
+
+标准方法统一位于 `fsp/*`：
+
+```text
+fsp/discover
+fsp/get_capabilities
+fsp/read
+fsp/write
+fsp/invoke
+fsp/get_task
+fsp/cancel_task
+fsp/subscribe
+```
+
+对象、操作和系统是能力数据的三个分区，不再各自形成顶层方法命名空间。`read`、`write` 和 `invoke` 是指令类别，不是设备全部指令的固定清单；每个工作站可以在能力数据中声明多条具体指令。
+
+## 成功响应
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-0001",
+  "result": {
+    "result_type": "complete",
+    "value": {},
+    "diagnostics": []
+  }
+}
+```
+
+`result_type` 只能是：
+
+| 值 | 说明 |
+| --- | --- |
+| `complete` | 当前请求已经完成 |
+| `not_modified` | 请求携带的修订号仍然有效 |
+| `task` | 已转为异步任务 |
+
+## 异步受理响应
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-0002",
+  "result": {
+    "result_type": "task",
+    "task": {
+      "task_id": "opaque-task-id",
+      "status": "queued"
+    },
+    "diagnostics": []
+  }
+}
+```
+
+`task_id` 是 FSP 运行时标识，不得被当作研究对象标识或能力版本。
+
+## 协议错误
+
+请求未进入设备执行前发生的协议错误使用 JSON-RPC `error`：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-0001",
+  "error": {
+    "code": -32602,
+    "message": "参数无效",
+    "data": {
+      "diagnostics": [
+        {
+          "code": "invalid_parameter",
+          "path": "params.device_id",
+          "message": "device_id 不能为空"
+        }
+      ]
+    }
+  }
+}
+```
+
+设备执行已经开始后，失败结果应当通过普通 `result` 返回，并保留任务状态、实际状态和诊断，不能伪装成未执行的协议错误。
+
+## 修订号
+
+以下数据必须携带修订号：
+
+- 设备能力数据集；
+- 研究对象当前状态；
+- 合格设备能力库记录；
+- 工作站绑定的执行计划。
+
+调用方可以使用 `if_revision` 避免重复读取未变化的数据。改变状态的请求应当携带 `expected_revision`；修订号不一致时，服务端不得按过期状态继续执行。
+
+## 日期与单位
+
+- 时间使用 RFC 3339 字符串；
+- 数值和单位分字段表达；
+- 参数单位必须与能力描述一致；
+- 未知值使用 `null`，不得用 `0` 或空字符串冒充测量值。
+
+## 规范用语
+
+本规范使用“必须”“不得”“应当”“不应当”“可以”表达约束强度。大写英文规范词不作为正文要求。

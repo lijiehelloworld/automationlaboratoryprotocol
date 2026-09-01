@@ -1,0 +1,94 @@
+---
+title: "能力供给与准入"
+description: "从 FSP 能力数据生成设备能力说明并进入质量评估"
+---
+
+## 模块作用
+
+能力供给与准入把 FSP 的对象、操作和系统数据转换为现有工具可以读取的设备能力说明，经过质量评估后进入合格设备能力库。
+
+```text
+FSP 能力数据集
+  → 设备能力说明
+  → 能力质量评估
+  → 合格设备能力库
+```
+
+Excel 不再是正式输入。设备能力说明是 FSP 数据的模型可读派生物，不能反向修改设备事实。
+
+## 输入
+
+输入是 `fsp/get_capabilities` 返回的数据：
+
+```text
+device
+revision
+objects[]
+operations[]
+system
+```
+
+转换时需要保留来源设备和修订号，确保说明可以重新生成和判定过期。
+
+## 输出：设备能力说明
+
+现有 `skill_all` 的设备能力说明采用以下结构：
+
+```markdown
+---
+工作站编码: 2002186824385539
+name: Liquid_Handling_Station_1ml_V2
+description: 支持容器开盖、加液、关盖操作。最多可添加16种不同溶液，移液枪单次最大移液量1mL，单种溶液总加注量不超过3mL。严格执行一瓶一液原则，单只原液瓶仅盛放一种溶液，全程保持原液瓶编号顺序固定不变。
+module: Synthesis
+---
+
+# 工作站中文名：移液平台_1ml_V2
+
+## 操作 1. 开盖
+
+### Initial State（初始状态）
+- 容器类型 (container_type): 进样瓶、50ml耐热瓶
+- 容器状态 (container_status): 有盖
+- 样品状态 (sample_status): 空、液体、固体、固液混合物
+
+### Effects（状态更新）
+- 容器状态 (container_status): 有盖→无盖
+
+### Parameters（参数）
+参数名称、英文名、层级、类型、单位、约束、必填、默认值和说明
+
+### Constraints（业务约束和依赖）
+设备强制约束
+
+### Returns（返回值）
+确定的返回字段、类型和说明
+```
+
+这是现有能力说明的实际格式。新流程只改变数据来源，不改变已经被转换器和质量评估器使用的核心章节。
+
+## 字段映射
+
+| FSP 数据 | 设备能力说明 |
+| --- | --- |
+| `device.device_id` | `工作站编码` |
+| `device.name` | `name` |
+| `device.description` | `description` |
+| `operations[].initial_state` | `Initial State` |
+| `operations[].effects` | `Effects` |
+| `operations[].parameters` | `Parameters` |
+| `operations[].constraints` | `Constraints` |
+| `operations[].returns` | `Returns` |
+| `system.safety_fences` | 操作约束和总体安全说明 |
+
+## 转换规则
+
+- 不得新增 FSP 未声明的操作；
+- 不得改变参数类型、单位、范围和枚举；
+- 嵌套参数必须按现有层级展开；
+- 初始状态和状态更新必须分别保留；
+- FSP 修订号变化后，旧能力说明必须重新生成或标记过期；
+- 自然语言润色不得改变强制约束。
+
+## 失败输出
+
+如果 FSP 数据缺少操作描述、参数、初始状态或状态更新，转换程序应当停止生成可准入说明，并把缺失项交给质量评估或修订流程；不得用模型猜测补齐。

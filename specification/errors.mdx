@@ -1,0 +1,92 @@
+---
+title: "错误与诊断"
+description: "协议错误、执行失败和恢复语义"
+---
+
+## 两类失败
+
+| 类型 | 返回位置 | 说明 |
+| --- | --- | --- |
+| 协议错误 | JSON-RPC `error` | 请求尚未进入设备执行，例如消息、鉴权、方法或参数错误 |
+| 执行失败 | 普通 `result` 或任务结果 | 设备操作已经受理或开始，必须保留实际状态与诊断 |
+
+## 协议错误示例
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-17",
+  "error": {
+    "code": -32602,
+    "message": "参数无效",
+    "data": {
+      "diagnostics": [
+        {
+          "code": "parameter_out_of_range",
+          "path": "params.arguments.volume",
+          "message": "参数值超出能力描述声明的范围"
+        }
+      ]
+    }
+  }
+}
+```
+
+## 执行失败示例
+
+```json
+{
+  "result_type": "complete",
+  "value": {
+    "status": "failed",
+    "state_committed": false
+  },
+  "diagnostics": [
+    {
+      "code": "precondition_failed",
+      "message": "操作前置状态不满足",
+      "retryable": true
+    }
+  ]
+}
+```
+
+## 标准诊断结构
+
+| 字段 | 类型 | 是否必需 | 说明 |
+| --- | --- | --- | --- |
+| `code` | `string` | 是 | 稳定、可机器判断的诊断编码 |
+| `message` | `string` | 是 | 面向调用方的中文说明 |
+| `path` | `string` | 否 | 出错字段或状态路径 |
+| `retryable` | `boolean` | 否 | 在不改变请求语义时是否可重试 |
+| `details` | `object` | 否 | 不含秘密和内部堆栈的补充信息 |
+
+## 标准编码
+
+| 编码 | 适用情况 |
+| --- | --- |
+| `unsupported_version` | 协议版本不支持 |
+| `authentication_failed` | 身份认证失败 |
+| `permission_denied` | 权限不足 |
+| `device_not_found` | 目标设备不可见或不存在 |
+| `capability_not_found` | 对象、操作或系统能力未声明 |
+| `invalid_parameter` | 参数类型、单位或结构错误 |
+| `parameter_out_of_range` | 参数超出范围或枚举 |
+| `precondition_failed` | 操作前置状态不满足 |
+| `constraint_violation` | 操作约束或安全围栏不满足 |
+| `revision_conflict` | `expected_revision` 已过期 |
+| `stale_state` | 状态已过期，必须重新读取 |
+| `device_busy` | 设备当前不能接收新操作 |
+| `execution_failed` | 设备确认操作失败 |
+| `result_unknown` | 无法确认最终结果，不得假定成功 |
+| `unsafe_cancellation` | 当前阶段不能安全取消 |
+| `task_not_found` | 异步任务不可见或不存在 |
+| `task_result_expired` | 任务结果已超过保留期 |
+| `rate_limited` | 请求频率超过服务限制 |
+
+## 恢复规则
+
+- `revision_conflict`、`stale_state` 和 `result_unknown` 出现后，调用方必须重新读取相关对象与系统状态；
+- `retryable=false` 时不得原样自动重试；
+- 操作已经开始时，网络超时不得被解释为失败或成功；
+- 服务端不得在错误消息中返回访问令牌、设备秘密、内部堆栈或不可见资源信息。

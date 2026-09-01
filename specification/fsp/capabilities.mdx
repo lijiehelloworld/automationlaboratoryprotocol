@@ -1,0 +1,175 @@
+---
+title: "设备发现与能力数据集"
+description: "FSP 设备目录和对象、操作、系统三分区能力数据"
+---
+
+## 设备发现
+
+### 输入
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "discover-1",
+  "method": "fsp/discover",
+  "params": {}
+}
+```
+
+### 输出
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "discover-1",
+  "result": {
+    "result_type": "complete",
+    "value": {
+      "devices": [
+        {
+          "device_id": "2002186824385539",
+          "name": "Liquid_Handling_Station_1ml_V2",
+          "capability_revision": "12",
+          "available": true
+        }
+      ]
+    },
+    "diagnostics": []
+  }
+}
+```
+
+设备名称用于显示；稳定引用必须使用 `device_id`。
+
+### 发现输出字段
+
+| 字段 | 类型 | 是否必需 | 说明 |
+| --- | --- | --- | --- |
+| `devices` | `array[object]` | 是 | 当前账户可见设备列表 |
+| `devices[].device_id` | `string` | 是 | 稳定设备标识 |
+| `devices[].name` | `string` | 是 | 设备名称 |
+| `devices[].capability_revision` | `string` | 是 | 当前能力数据修订号 |
+| `devices[].available` | `boolean` | 是 | 服务当前是否允许访问该设备 |
+
+## 能力数据集
+
+`fsp/get_capabilities` 返回类似表格记录、实际使用结构化 JSON 传输的能力数据。该数据替代人工 Excel 作为能力提炼入口。
+
+```text
+FSPCapabilityDataset
+├── device
+├── revision
+├── objects[]
+├── operations[]
+└── system
+```
+
+### 输入
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "capability-1",
+  "method": "fsp/get_capabilities",
+  "params": {
+    "device_id": "2002186824385539"
+  }
+}
+```
+
+| 参数 | 类型 | 是否必需 | 约束 |
+| --- | --- | --- | --- |
+| `device_id` | `string` | 是 | 必须来自当前账户的 `fsp/discover` 结果 |
+| `if_revision` | `string` | 否 | 调用方已缓存的能力修订号 |
+
+### 输出结构
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "capability-1",
+  "result": {
+    "result_type": "complete",
+    "value": {
+      "device": {
+        "device_id": "2002186824385539",
+        "name": "Liquid_Handling_Station_1ml_V2",
+        "description": "支持容器开盖、加液、关盖操作。最多可添加16种不同溶液，移液枪单次最大移液量1mL，单种溶液总加注量不超过3mL。严格执行一瓶一液原则，单只原液瓶仅盛放一种溶液，全程保持原液瓶编号顺序固定不变。"
+      },
+      "revision": "12",
+      "objects": [],
+      "operations": [],
+      "system": {}
+    },
+    "diagnostics": []
+  }
+}
+```
+
+本页只规定外层结构。三个分区分别见[对象](/specification/fsp/objects)、[操作](/specification/fsp/operations)和[系统](/specification/fsp/system)。
+
+### 成功输出字段
+
+| 字段 | 类型 | 是否必需 | 说明 |
+| --- | --- | --- | --- |
+| `device` | `object` | 是 | 设备标识、名称和总体说明 |
+| `device.device_id` | `string` | 是 | 稳定设备标识 |
+| `device.name` | `string` | 是 | 设备名称 |
+| `device.description` | `string` | 是 | 能力总体说明 |
+| `revision` | `string` | 是 | 本次能力数据修订号 |
+| `objects` | `array[object]` | 是 | FSP 对象类型定义 |
+| `operations` | `array[object]` | 是 | 设备具体指令定义；每项含 `command_id` 和 `command_class` |
+| `system` | `object` | 是 | 总体能力、运行状态字段和安全围栏定义 |
+
+空数组表示当前设备没有该类对象或指令，不能省略字段。
+
+## 条件读取
+
+调用方可以携带 `if_revision`。未变化时服务端返回：
+
+```json
+{
+  "result_type": "not_modified",
+  "revision": "12",
+  "diagnostics": []
+}
+```
+
+## 错误输出
+
+设备不可见、参数错误或版本不支持时，请求不得返回部分能力数据：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "capability-1",
+  "error": {
+    "code": -32004,
+    "message": "设备不可见或不存在",
+    "data": {
+      "diagnostics": [
+        {
+          "code": "device_not_found",
+          "path": "params.device_id",
+          "message": "无法读取目标设备能力"
+        }
+      ]
+    }
+  }
+}
+```
+
+错误消息不得用于判断调用方无权访问的设备是否真实存在。
+
+以下变化必须产生新的能力修订号：
+
+- 新增、删除或修改对象类型；
+- 新增、删除或修改操作签名、约束或返回值；
+- 修改系统能力说明或安全围栏；
+- 修改会影响调用方行为的适配映射。
+
+设备当前忙闲状态和任务进度不改变能力修订号。
+
+## 能力数据的事实地位
+
+FSP 能力数据是设备能力的事实来源。由其生成的 Skill、MDX 或其他自然语言说明不得改变对象属性、操作参数、强制约束和系统安全围栏。

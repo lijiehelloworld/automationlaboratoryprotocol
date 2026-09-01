@@ -37,33 +37,50 @@
           {
             "group": "协议基础",
             "pages": [
+              "specification/index",
               "specification/overview",
               "specification/base-protocol",
               "specification/authentication"
             ]
           },
           {
-            "group": "系统",
+            "group": "FSP 函数状态协议",
             "pages": [
-              "specification/system"
+              "specification/fsp/overview",
+              "specification/fsp/capabilities",
+              "specification/fsp/objects",
+              "specification/fsp/operations",
+              "specification/fsp/system",
+              "specification/fsp/async-tasks"
             ]
           },
           {
-            "group": "研究对象",
+            "group": "设备接入与接口适配",
             "pages": [
-              "specification/objects"
+              "specification/device-integration/overview"
             ]
           },
           {
-            "group": "操作",
+            "group": "能力供给与准入",
             "pages": [
-              "specification/operations"
+              "specification/capability/overview",
+              "specification/capability/quality",
+              "specification/capability/library"
             ]
           },
           {
-            "group": "工作流",
+            "group": "研究对象与状态",
             "pages": [
-              "specification/workflows"
+              "specification/research/objects"
+            ]
+          },
+          {
+            "group": "函数式实验方法",
+            "pages": [
+              "specification/methods/overview",
+              "specification/methods/validation",
+              "specification/methods/binding",
+              "specification/methods/execution"
             ]
           },
           {

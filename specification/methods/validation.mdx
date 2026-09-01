@@ -1,0 +1,86 @@
+---
+title: "方法验证"
+description: "优化、状态仿真、科学评审和版本阻断"
+---
+
+## 验证顺序
+
+```text
+候选方法
+  → 代码安全与规范化检查
+  → 函数和参数可计算性检查
+  → 容器与样品状态仿真
+  → 科学语义评审
+  → 通过后转换
+```
+
+任一强制检查失败时，不提交研究对象状态，也不生成可供下游执行的最终 JSON。
+
+## 输入
+
+现有仿真器接收 `.py` 实验方案路径，并加载同一版本的：
+
+- 函数式能力；
+- 公共参数类型；
+- 仿真器函数；
+- 状态模型。
+
+## 仿真通过输出
+
+以下示例来自现有最小闭环仿真报告：
+
+```json
+{
+  "example_id": "A01-minimal-closed-loop",
+  "source_question": "A01 不同 Fe 配位环境对 NiFe 基催化剂碱性 OER 活性演化的影响",
+  "scope": "研究对象样品准备与 UV-Vis 表征子流程，不代表完整 A01 实验",
+  "simulation_status": "passed",
+  "verified_by": "run_simulation.py",
+  "command_exit_code": 0,
+  "workflow_file": "A01_最小闭环实验方案.py",
+  "operation_count": 6,
+  "checks": [
+    "调用仅使用已注册工作站函数",
+    "容器总数固定为 2，实际作用对象由 container_ids 指定",
+    "开盖、加液、关盖和检测构成研究对象从 St 到 St+1 的状态演化",
+    "强制条件失败时不提交研究对象的模拟状态"
+  ],
+  "limitations": [
+    "未连接真实实验室或设备",
+    "未验证催化剂制备、OER 测试和真实测量结果",
+    "未替代现场安全与设备联锁"
+  ]
+}
+```
+
+`workflow_file` 是现有工具保留的历史字段名，仅表示方案文件路径；规范保留该字段是为了忠实呈现原始产物。
+
+## 版本不兼容输出
+
+```json
+{
+  "example_id": "A01-full-candidate",
+  "workflow_file": "A01_CoFeNi_HEO_实验方案.py",
+  "simulation_status": "blocked",
+  "stage": "函数库导入",
+  "observed_error": "ImportError: 当前 Function Skill 快照中缺少原始方案导入的 SourceBottle 或 ElectrochemicalTask 类型",
+  "meaning": "方案代码与函数式 Skill / 公共数据类型并非同一冻结版本，无法建立可执行调用环境。",
+  "state_commit": "未开始仿真，不存在研究对象状态提交。",
+  "required_fix": [
+    "为方案、函数式 Skill、公共类型和仿真器固定同一版本快照",
+    "重新执行 AST 准入和状态仿真",
+    "只有无强制错误的版本才能生成可下游消费的执行 JSON"
+  ]
+}
+```
+
+## 科学语义评审
+
+仿真验证结构、参数和状态链，不能证明科学方案合理。仿真通过后还需要检查：
+
+- 是否覆盖用户核心实验目标；
+- 操作顺序是否具有明显科学逻辑错误；
+- 参数是否违反已经声明的硬约束；
+- 是否遗漏必要处理或表征。
+
+评审结果分为 `block`、`warn` 和 `info`。只有 `block` 阻止转换；`warn` 和 `info` 保留为建议。

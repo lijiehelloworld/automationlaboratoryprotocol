@@ -1,33 +1,48 @@
 ---
 title: "快速开始"
-description: "ALL 调用方的最短接入流程"
+description: "从 FSP 设备能力到函数式实验方法的最短路径"
 ---
 
-调用方集成 ALL 客户端能力后，按以下顺序与 ALL 服务端交互。
-
 <Steps>
-  <Step title="发现授权服务器">
-    读取 OAuth 受保护资源元数据，选择可信授权服务器并取得适用于 ALL 资源的访问令牌。
+  <Step title="配置服务账户">
+    管理员为调用方签发访问令牌，并授予 `fsp.read`、`fsp.execute` 或 `fsp.manage`。
   </Step>
-  <Step title="发现系统">
-    调用 `system/discover`，确认协议版本、可见设备和四模块支持状态。
+  <Step title="发现设备">
+    调用 `fsp/discover`，取得可见设备、能力修订号和可用状态。
   </Step>
-  <Step title="获取能力清单">
-    调用 `system/get_manifest`，取得研究对象类型、操作契约、工作流定义和所需权限。
+  <Step title="读取 FSP 能力">
+    调用 `fsp/get_capabilities`，取得对象、操作和系统三个分区。该数据是能力说明提炼的正式入口。
   </Step>
-  <Step title="读取状态和研究对象">
-    使用 `system/get_status`、`objects/list`、`objects/get` 或 `operations/read` 获取当前事实并保存修订号。
+  <Step title="完成能力准入">
+    生成设备能力说明并运行现有质量评估。只有 `passed=true` 且达到阈值的能力进入合格设备能力库。
   </Step>
-  <Step title="执行操作或 Workflow">
-    使用 `operations/write`、`operations/invoke` 或 `workflows/run`；运行前携带期望修订号并遵守数据结构和权限要求。
+  <Step title="生成并验证方法">
+    使用准入后的函数式能力生成 `generate_recipe()`，完成优化、状态仿真和科学语义评审。
   </Step>
-  <Step title="跟踪长任务">
-    返回 `resultType=operation` 时使用 `operations/get` 查询，必要时调用 `operations/respond` 或 `operations/cancel`。
+  <Step title="绑定并执行">
+    把验证后的方法转换为含 `steps`、`path` 和 `涉及工作站` 的执行计划，再按步骤调用 `fsp/invoke`。
   </Step>
 </Steps>
 
+## 最小 FSP 请求
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "discover-1",
+  "method": "fsp/discover",
+  "params": {}
+}
+```
+
 <Warning>
-调用方必须根据能力清单中的数据结构定义、约束和安全声明构造请求，不得根据设备名称猜测能力。
+调用方必须根据 FSP 能力数据中的参数、状态、约束和安全围栏构造请求，不得根据设备名称猜测能力。
 </Warning>
 
-下一步阅读[身份认证与授权](/specification/authentication)和[系统](/specification/system)。
+## 阅读顺序
+
+1. [基础协议](/specification/base-protocol)
+2. [FSP 概述](/specification/fsp/overview)
+3. [设备接入与接口适配](/specification/device-integration/overview)
+4. [能力供给与准入](/specification/capability/overview)
+5. [函数式实验方法](/specification/methods/overview)

@@ -1,0 +1,134 @@
+---
+title: "能力质量评估"
+description: "使用现有评分结构检查设备能力说明"
+---
+
+## 输入
+
+输入是按照[能力供给与准入](/specification/capability/overview)生成的设备能力说明。
+
+现有评估器检查：
+
+```text
+工作站名称和标题
+操作描述
+参数信息
+初始状态
+状态更新
+约束规则
+Frontmatter 完整性
+参数约束规范
+嵌套参数展开
+返回值
+状态转换完整性
+示例完整性
+```
+
+## 现有通过输出
+
+以下字段和分数来自 `skill_all` 现有质量报告，不另造包装结构：
+
+```json
+{
+  "station_name": "02_natural_skill",
+  "total_score": 95.0,
+  "required_score": 60,
+  "optional_raw_score": 35,
+  "optional_weighted_score": 35.0,
+  "grade": "A（优秀）",
+  "passed": true,
+  "threshold": 60,
+  "required_checks": [
+    {
+      "id": "R1",
+      "name": "工作站名称/标题",
+      "score": 10,
+      "max_score": 10,
+      "passed": true,
+      "detail": "LLM未评估，以正则预检结果为准",
+      "coefficient": null,
+      "coefficient_reason": null
+    },
+    {
+      "id": "R3",
+      "name": "参数信息",
+      "score": 15,
+      "max_score": 15,
+      "passed": true,
+      "detail": "LLM未评估，以正则预检结果为准",
+      "coefficient": null,
+      "coefficient_reason": null
+    }
+  ],
+  "optional_checks": [
+    {
+      "id": "O3",
+      "name": "整体流程约束",
+      "score": 0,
+      "max_score": 5,
+      "passed": false,
+      "detail": "LLM未评估，以正则预检结果为准",
+      "coefficient": 0.0,
+      "coefficient_reason": "LLM未评估，正则预检通过则系数1.0，未通过则0.0"
+    }
+  ],
+  "coefficient_report": [
+    {
+      "id": "O3",
+      "name": "整体流程约束",
+      "coefficient": 0.0,
+      "coefficient_reason": "LLM未评估，正则预检通过则系数1.0，未通过则0.0",
+      "raw_score": 0,
+      "weighted_score": 0.0
+    }
+  ],
+  "fix_instructions": [
+    {
+      "check_id": "O3",
+      "check_name": "整体流程约束",
+      "issue": "LLM未评估，以正则预检结果为准",
+      "action": "添加## 整体流程约束小节，说明操作间的先后依赖关系",
+      "priority": "medium"
+    }
+  ],
+  "suggestions": [
+    "整体流程约束未通过（得分0/5）：LLM未评估，以正则预检结果为准"
+  ]
+}
+```
+
+完整报告还包含其他必选和可选检查项。本页只截取原报告中的 R1、R3 和 O3，字段和值均保持现有产物一致。
+
+## 准入判断
+
+设备能力说明只有同时满足以下条件才能准入：
+
+```text
+passed == true
+total_score >= threshold
+```
+
+默认样例阈值为 60。阈值来自质量评估配置，不作为所有部署不可修改的协议常量。
+
+## 不通过与修订
+
+评估不通过时，仍使用同一报告结构：
+
+- `passed=false`；
+- 失败项保留在 `required_checks` 或 `optional_checks`；
+- `fix_instructions` 给出修订要求；
+- `suggestions` 给出非阻断建议。
+
+修订后必须重新生成完整报告，不能只修改总分。
+
+## 对 FSP 数据的补充检查
+
+从 FSP 生成能力说明时还应检查：
+
+- 来源设备和修订号是否存在；
+- 对象、操作和系统三个分区是否可解析；
+- 操作参数和状态字段是否能够无损映射；
+- 系统安全围栏是否进入说明；
+- 派生说明是否遗漏 FSP 强制约束。
+
+这些检查可以增加到现有评分配置，但输出仍使用现有报告字段。

@@ -1,0 +1,100 @@
+---
+title: "对象"
+description: "FSP 可识别容器及其当前状态"
+---
+
+## 范围
+
+FSP 对象分区说明设备能够识别或处理的容器类型，以及运行时容器的当前状态。
+
+研究对象的科学身份、样品、证据与来源见[研究对象与状态](/specification/research/objects)。
+
+## 容器类型定义
+
+```json
+{
+  "object_type_id": "container.sample_vial",
+  "name": "进样瓶",
+  "object_kind": "container",
+  "properties": {
+    "shape": null,
+    "diameter_mm": null,
+    "height_mm": null,
+    "material": null
+  },
+  "states": {
+    "container_status": ["有盖", "无盖"],
+    "sample_status": ["空", "液体", "固体", "固液混合物"]
+  }
+}
+```
+
+`skill_all` 已确认该容器名称和状态字段，但没有提供形状、直径、高度和材质值，因此示例保持 `null`。FSP 设备或经确认的容器目录提供真实值后才能填写，不能由转换程序补猜。
+
+### 必需属性
+
+| 字段 | 说明 |
+| --- | --- |
+| `object_type_id` | 稳定的容器类型标识 |
+| `name` | 面向人的名称 |
+| `object_kind` | 固定为 `container` |
+| `properties.shape` | 形状 |
+| `properties.material` | 材质 |
+| `properties.*` | 与形状匹配的尺寸，如直径、长、宽、高 |
+| `states` | 设备可观察或修改的状态字段和允许值 |
+
+圆形和圆柱形容器应当描述直径；非圆形容器使用适用的长度、宽度和高度。不可得数值使用 `null` 并附来源说明，不得猜测。
+
+## 运行时状态
+
+`fsp/read` 读取容器当前状态：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "read-object-1",
+  "method": "fsp/read",
+  "params": {
+    "device_id": "2002186824385539",
+    "category": "object",
+    "object_ids": [1, 2]
+  }
+}
+```
+
+返回值沿用设备能力中声明的字段：
+
+```json
+{
+  "result_type": "complete",
+  "value": {
+    "container_type": "进样瓶",
+    "container_count": 2,
+    "container_ids": [1, 2],
+    "containers": [
+      {
+        "container_id": 1,
+        "container_status": "无盖",
+        "sample_status": "液体",
+        "sample_volume": 0.5
+      },
+      {
+        "container_id": 2,
+        "container_status": "无盖",
+        "sample_status": "液体",
+        "sample_volume": 0.5
+      }
+    ],
+    "revision": "7"
+  },
+  "diagnostics": []
+}
+```
+
+## 状态规则
+
+- 设备只能返回能力数据集中已经声明的状态字段；
+- 状态读取必须包含观测时间或修订号；
+- 操作产生的状态变化必须与操作定义的 `effects` 一致；
+- 强制条件失败时不得提交预期新状态；
+- 设备实际状态未知时必须明确返回诊断，不能假定操作成功。

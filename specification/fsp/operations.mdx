@@ -1,0 +1,215 @@
+---
+title: "操作"
+description: "设备暴露的函数、参数、状态转换和返回值"
+---
+
+## 定义
+
+操作是设备通过 FSP 暴露的可调用能力。FSP 关注操作语义，不强制设备采用特定 URL、HTTP 方法或驱动实现。
+
+每个操作至少说明：稳定指令标识、指令类别、名称、能力说明、初始状态、状态更新、参数、约束、返回值、诊断和同步或异步模式。
+
+`command_class` 只能是：
+
+| 值 | 含义 |
+| --- | --- |
+| `read` | 读取设备或对象状态，不改变物理状态 |
+| `write` | 把声明为可写的状态设置为目标值，可能触发设备动作 |
+| `invoke` | 执行设备暴露的函数 |
+
+## 操作定义示例
+
+以下字段来自现有工作站能力说明：
+
+```json
+{
+  "command_id": "add_liquid_with_material",
+  "command_class": "invoke",
+  "name": "加液_物料绑定",
+  "description": "通过指定已经记录的物料进行加液操作。",
+  "initial_state": {
+    "container_type": ["进样瓶", "50ml耐热瓶"],
+    "container_status": ["无盖"],
+    "sample_status": ["空", "液体", "固体", "固液混合物"]
+  },
+  "effects": {
+    "container_status": "无盖",
+    "sample_status": {
+      "空": "液体",
+      "液体": "液体",
+      "固体": "固液混合物",
+      "固液混合物": "固液混合物"
+    }
+  },
+  "parameters": [
+    {
+      "name": "container_type",
+      "type": "enum",
+      "required": true,
+      "allowed_values": ["进样瓶", "50ml耐热瓶"],
+      "description": "目标容器类型"
+    },
+    {
+      "name": "container_count",
+      "type": "int",
+      "required": true,
+      "minimum": 1,
+      "maximum": 10,
+      "description": "当前实验中该容器类型的总数量"
+    },
+    {
+      "name": "container_ids",
+      "type": "array[int]",
+      "required": true,
+      "constraints": ["max(container_ids) <= container_count"],
+      "description": "本次操作涉及的容器编号列表"
+    },
+    {
+      "name": "dispensing_plan",
+      "type": "array[object]",
+      "required": true,
+      "description": "加样方案列表，各加样瓶的原液取用顺序全程固定",
+      "children": [
+        {
+          "name": "sample_bottle_id",
+          "type": "int",
+          "required": true,
+          "constraints": ["sample_bottle_id in container_ids"],
+          "description": "加样瓶号，即目标容器编号"
+        },
+        {
+          "name": "source_bottle",
+          "type": "object",
+          "required": true,
+          "children": [
+            {
+              "name": "source_bottle_id",
+              "type": "int",
+              "required": true,
+              "minimum": 1,
+              "maximum": 16,
+              "description": "原液瓶编号"
+            },
+            {
+              "name": "ingredient_name",
+              "type": "string",
+              "required": true,
+              "description": "配料名称"
+            },
+            {
+              "name": "source_volume_mL",
+              "type": "float",
+              "unit": "mL",
+              "required": true,
+              "exclusive_minimum": 0,
+              "maximum": 3.0,
+              "description": "原液用量；单次移液量还必须满足不超过 1 mL 的操作约束"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "constraints": [
+    "container_status == '无盖'",
+    "1 <= container_count <= 10",
+    "max(container_ids) <= container_count",
+    "sample_bottle_id in container_ids",
+    "1 <= source_bottle_id <= 16",
+    "source_volume_mL <= 1.0",
+    "单种溶液总加注量 <= 3.0 mL",
+    "容器内液体体积 <= 30.0 mL"
+  ],
+  "returns": [
+    {
+      "name": "containers",
+      "type": "array[object]",
+      "children": [
+        {"name": "container_type", "type": "enum", "allowed_values": ["进样瓶", "50ml耐热瓶"]},
+        {"name": "container_status", "type": "enum", "allowed_values": ["无盖"]},
+        {"name": "sample_status", "type": "string"},
+        {"name": "container_id", "type": "int"},
+        {"name": "sample_volume", "type": "float", "unit": "mL"},
+        {"name": "source_bottle_ids", "type": "array[int]"}
+      ]
+    }
+  ]
+}
+```
+
+上述操作、参数层级、范围、约束和返回字段均来自 `skill_all` 的自然语言能力与函数式能力。当前文件未声明同步或异步模式，因此 FSP 适配器必须根据真实设备接口补充 `execution_mode`，不能由转换器猜测。
+
+## 参数要求
+
+参数定义应当包含现有信息中适用的字段：
+
+```text
+name
+type
+unit
+required
+default
+minimum / maximum
+allowed_values
+description
+children
+constraints
+```
+
+嵌套参数必须展开到可验证层级。例如 `dispensing_plan` 应当说明 `sample_bottle_id`、`source_bottle_id`、`ingredient_name` 和 `source_volume_mL`，不能只写“对象数组”。
+
+## 调用
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "invoke-1",
+  "method": "fsp/invoke",
+  "params": {
+    "device_id": "2002186824385539",
+    "command_id": "add_liquid_with_material",
+    "arguments": {
+      "container_type": "进样瓶",
+      "container_count": 2,
+      "container_ids": [1],
+      "dispensing_plan": [
+        {
+          "sample_bottle_id": 1,
+          "source_bottle": {
+            "ingredient_name": "试剂A",
+            "source_volume_mL": 0.5,
+            "source_bottle_id": 1
+          }
+        }
+      ]
+    },
+    "expected_revision": "7"
+  }
+}
+```
+
+此处参数与 `skill_all` 函数式能力和代码式方案保持一致。最终执行计划中的中文 `operation` 和压缩参数由能力绑定模块解析为这里的 `command_id` 与函数参数，不能直接按字符串猜测。
+
+## 写入
+
+只有能力数据将某个字段声明为可写时，调用方才能使用 `fsp/write`。请求参数与 `fsp/invoke` 使用相同外层：`device_id`、能力中取得的 `command_id`、`arguments` 和 `expected_revision`。
+
+`skill_all` 当前移液工作站能力只提供函数式调用，没有可直接引用的写入指令，因此本规范不补造具体写入示例。
+
+## 强制约束
+
+操作开始前必须校验能力说明中的强制条件，包括：
+
+- 初始容器状态；
+- 样品状态；
+- 参数类型、范围和枚举；
+- 容器数量与编号关系；
+- 多参数耦合约束；
+- 系统安全围栏；
+- 调用方权限。
+
+所有强制错误必须在 `diagnostics` 中返回。存在强制错误时不得接触物理设备，也不得提交研究对象新状态。
+
+## 返回
+
+同步成功时，返回值必须符合操作定义中的 `returns`，并包含实际状态变化。异步操作返回任务句柄，见[异步任务](/specification/fsp/async-tasks)。

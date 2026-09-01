@@ -1,0 +1,94 @@
+---
+title: "系统"
+description: "设备总体能力、运行状态和安全围栏"
+---
+
+## 作用
+
+系统分区描述设备整体，而不是某个具体实验操作。它至少包括设备身份、能力总体说明、当前状态和安全围栏。
+
+## 能力说明
+
+```json
+{
+  "device_id": "2002186824385539",
+  "name": "Liquid_Handling_Station_1ml_V2",
+  "description": "支持容器开盖、加液、关盖操作。最多可添加16种不同溶液，移液枪单次最大移液量1mL，单种溶液总加注量不超过3mL。严格执行一瓶一液原则，单只原液瓶仅盛放一种溶液，全程保持原液瓶编号顺序固定不变。",
+  "capability_summary": [
+    "开盖",
+    "加液_物料绑定",
+    "关盖"
+  ],
+  "status_fields": [
+    "state",
+    "available",
+    "current_task"
+  ],
+  "safety_fences": [
+    {
+      "name": "容器状态约束",
+      "description": "加液前容器必须处于无盖状态。"
+    },
+    {
+      "name": "单次移液量约束",
+      "description": "单次移液量不得超过设备声明上限。"
+    }
+  ]
+}
+```
+
+## 状态读取
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "read-system-1",
+  "method": "fsp/read",
+  "params": {
+    "device_id": "2002186824385539",
+    "category": "system"
+  }
+}
+```
+
+```json
+{
+  "result_type": "complete",
+  "value": {
+    "state": "idle",
+    "available": true,
+    "current_task": null,
+    "capability_revision": "12",
+    "observed_at": "2026-09-01T12:00:00Z"
+  },
+  "diagnostics": []
+}
+```
+
+## 状态值
+
+系统至少应当区分：
+
+```text
+offline
+idle
+busy
+paused
+fault
+maintenance
+```
+
+设备无法准确判断时，可以使用 `unknown` 并返回诊断。
+
+## 安全围栏
+
+安全围栏用于表达设备服务必须执行的保护规则，例如：
+
+- 设备忙碌时是否允许新任务；
+- 参数是否超出物理能力；
+- 当前状态是否允许目标操作；
+- 操作是否与现有任务冲突；
+- 是否需要人工确认；
+- 故障或急停状态是否禁止执行。
+
+安全围栏必须在设备执行前判断。自然语言实验方法、Skill 或调用方提示不能绕过安全围栏。
