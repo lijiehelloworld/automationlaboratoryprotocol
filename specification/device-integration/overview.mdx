@@ -1,104 +1,260 @@
 ---
-title: "设备接入与接口适配"
-description: "把现有 API、SDK 和驱动映射为 FSP 的独立接入模块"
+title: "设备接口要求"
+description: "设备通过统一接口公开对象、操作和系统三类信息"
 ---
 
-## 模块定位
+## 目的
 
-设备接入与接口适配是独立的实现说明，不属于对象、操作或系统数据本身。FSP 不要求工作站修改原有接口，只要求适配后能够提供统一能力描述和调用行为。
+设备接入的结果是：调用方可以通过设备接口明确知道设备能处理什么容器、能执行什么操作，以及当前是否允许执行。每台设备必须把这些信息组织为三个小模块：对象、操作和系统。
 
 ```text
-现有设备接口
-  → FSP 适配器
-      → 对象说明
-      → 操作说明
-      → 系统说明
+设备接口
+├── 对象：设备可识别或处理的容器及其状态
+├── 操作：设备对外暴露的控制接口及状态变化
+└── 系统：设备身份、运行状态、能力修订号和安全围栏
 ```
 
-## 可以适配的接口
+设备底层可以使用 HTTP、RPC、SDK 或设备协议实现；FSP 只规定对外返回的信息结构和行为，不规定内部 URL、驱动或通信帧格式。
 
-- HTTP 或 REST API；
-- WebSocket、RPC 或消息接口；
-- 厂商 SDK；
-- 本地驱动；
-- 串口、TCP 或其他设备协议。
+## 三个接口小模块
 
-FSP 对外仍使用统一远程消息。底层接口类型不影响上层能力语义。
+| 小模块 | 接口要说明什么 | 主要作用 |
+| --- | --- | --- |
+| 对象 | `objects[]`：容器类型、形状、直径、材质、可观察状态和实例编号 | 让调用方知道可处理的对象是什么，以及对象当前处于什么状态 |
+| 操作 | `operations[]`：操作标识、控制参数、类型、范围、枚举、前置条件、状态变化、返回值和诊断 | 让调用方按已声明的规则发起控制请求 |
+| 系统 | `system`：设备标识、能力修订号、可用状态、状态字段和安全围栏 | 判断设备是否可用，并保护设备不在不安全条件下执行 |
 
-## 最低接入要求
+对象描述的是“操作谁”，操作描述的是“做什么”，系统描述的是“现在能不能做”。三者共同构成一台设备的可调用接口。
 
-设备服务或适配器至少能够：
+## 设备能力接口
 
-1. 返回稳定设备标识和能力修订号；
-2. 说明支持的容器类型及可观察状态；
-3. 说明操作名称、参数、约束、状态变化和返回值；
-4. 返回系统状态和安全围栏；
-5. 把 `fsp/invoke` 映射到真实接口；
-6. 把设备结果和错误转换为 FSP 返回值与诊断。
+设备通过 `fsp/get_capabilities` 一次返回三类静态定义。调用方先通过 `fsp/discover` 取得 `device_id`，再请求能力数据；能力修订号变化后必须重新读取。
 
-## 不作强制规定的内容
+### 请求
 
-本规范不统一要求：
-
-- 设备 API URL 结构；
-- HTTP 方法；
-- SDK 类名；
-- 串口帧格式；
-- 驱动目录；
-- 设备内部队列；
-- 厂商错误码。
-
-这些内容可以保存在部署配置中，不需要进入能力数据集。
-
-## 映射原则
-
-| 现有信息 | FSP 表达 |
-| --- | --- |
-| 设备支持的容器及状态 | `objects[]` |
-| 设备 API 或函数 | `operations[]` |
-| 参数说明 | `operations[].parameters` |
-| 前置条件和结果状态 | `initial_state` 与 `effects` |
-| 返回值 | `returns` |
-| 设备忙闲、故障和能力概要 | `system` |
-| 设备保护规则 | `system.safety_fences` |
-
-## 适配器边界
-
-适配器可以翻译名称、单位和错误码，但不得：
-
-- 放宽设备原有物理限制；
-- 隐藏强制安全条件；
-- 声明设备不存在的操作；
-- 在调用失败时伪造成功状态；
-- 让模型可读说明覆盖真实接口定义。
-
-## 调用映射示意
-
-以下伪代码使用本规范操作示例中的 `add_liquid_with_material` 参数，说明适配顺序：
-
-```python
-def invoke(command_id, arguments, expected_revision):
-    # 先确认调用方使用的是当前设备状态，避免过期状态下发动作。
-    verify_revision(expected_revision)
-
-    # 再按 FSP 能力数据校验类型、枚举、范围、嵌套字段和多参数约束。
-    validate_arguments(command_id, arguments)
-
-    # 将稳定指令标识映射到设备已经存在的 API、SDK 函数或驱动入口。
-    if command_id == "add_liquid_with_material":
-        return existing_device_interface.add_liquid_with_material(
-            container_type=arguments["container_type"],
-            container_count=arguments["container_count"],
-            container_ids=arguments["container_ids"],
-            dispensing_plan=arguments["dispensing_plan"],
-        )
-
-    # 未在能力数据中声明的指令必须拒绝，不能猜测底层接口。
-    raise CapabilityNotFound(command_id)
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "capability-1",
+  "method": "fsp/get_capabilities",
+  "params": {
+    "device_id": "2002186824385539"
+  }
+}
 ```
 
-适配器输出必须再转换为操作定义中的 `returns`、实际状态变化和 `diagnostics`。若底层接口只返回厂商状态码，适配器需要保留原始诊断引用并映射为 FSP 标准诊断，不能把未知结果写成成功。
+| 字段 | 类型 | 作用 |
+| --- | --- | --- |
+| `device_id` | `string` | 指定需要说明接口的设备；必须来自设备发现结果 |
+| `if_revision` | `string` | 可选的已缓存能力修订号；未变化时服务端可返回未修改结果 |
 
-## 接入后的下一步
+### 响应示例
 
-FSP 能力数据进入[技能提取](/specification/capability/overview)，通过质量评估后才能进入合格设备技能库并用于实验方法生成。
+```json
+{
+  "result_type": "complete",
+  "value": {
+    "device": {
+      "device_id": "2002186824385539",
+      "name": "液体处理工作站"
+    },
+    "revision": "12",
+    "objects": [
+      {
+        "object_type_id": "container.sample_vial",
+        "name": "进样瓶",
+        "object_kind": "container",
+        "properties": {
+          "shape": null,
+          "diameter_mm": null,
+          "material": null
+        },
+        "states": {
+          "container_status": ["有盖", "无盖"],
+          "sample_status": ["空", "液体"]
+        }
+      }
+    ],
+    "operations": [
+      {
+        "command_id": "add_liquid_with_material",
+        "command_class": "invoke",
+        "execution_mode": "async",
+        "name": "加液",
+        "initial_state": {
+          "container_status": ["无盖"]
+        },
+        "parameters": [
+          {
+            "name": "container_type",
+            "type": "enum",
+            "required": true,
+            "allowed_values": ["进样瓶", "50ml耐热瓶"],
+            "description": "目标容器类型"
+          },
+          {
+            "name": "container_count",
+            "type": "int",
+            "required": true,
+            "minimum": 1,
+            "maximum": 10,
+            "description": "当前实验中该容器类型的总数量"
+          },
+          {
+            "name": "container_ids",
+            "type": "array[int]",
+            "required": true,
+            "constraints": ["max(container_ids) <= container_count"],
+            "description": "本次操作涉及的容器编号列表"
+          },
+          {
+            "name": "dispensing_plan",
+            "type": "array[object]",
+            "required": true,
+            "description": "逐容器记录物料来源和加液量的方案"
+          }
+        ],
+        "effects": {
+          "sample_status": "液体"
+        },
+        "returns": [
+          {
+            "name": "task_id",
+            "type": "string"
+          }
+        ]
+      }
+    ],
+    "system": {
+      "availability_states": ["offline", "idle", "busy", "fault"],
+      "status_fields": ["state", "available", "current_task"],
+      "safety_fences": [
+        {
+          "name": "容器状态约束",
+          "description": "加液前目标容器必须无盖。"
+        }
+      ]
+    }
+  },
+  "diagnostics": []
+}
+```
+
+此接口中的 `objects[]` 是对象小模块，`operations[]` 是操作小模块，`system` 是系统小模块。完整字段约束分别见[对象](/specification/fsp/objects)、[操作](/specification/fsp/operations)和[系统](/specification/fsp/system)。
+
+## 对象、操作、系统的最低内容
+
+### 对象（容器）
+
+每个 `objects[]` 项必须至少包含 `object_type_id`、`name`、`object_kind`、`properties` 和 `states`。`object_kind` 固定为 `container`；`properties` 用于说明容器形状、直径、材质等物理属性，`states` 列出设备能够读取或改变的状态及允许值。
+
+例如，`container_status: ["有盖", "无盖"]` 表示设备能区分这两种容器状态，也为操作的前置条件提供可验证的依据。
+
+### 操作（控制）
+
+每个 `operations[]` 项必须至少包含 `command_id`、`command_class`、`execution_mode`、`parameters`、`initial_state`、`effects` 和 `returns`。参数必须给出名称、类型、是否必填、用途，以及适用时的范围、单位、枚举值或跨字段约束。
+
+例如，`container_count` 的类型为 `int`、范围为 `1..10`，`container_ids` 受 `max(container_ids) <= container_count` 约束；服务端必须据此拒绝不符合已声明范围或跨字段约束的控制请求。
+
+### 系统
+
+`system` 必须说明设备可用状态、可读取的系统状态字段和安全围栏。安全围栏由服务端在执行前检查，例如“设备必须处于空闲状态”“容器必须无盖”或“参数不得超过物理上限”。调用方不能用自然语言说明覆盖安全围栏。
+
+## 接口示例一：读取容器和系统状态
+
+在执行控制操作前，调用方分别读取目标容器和设备系统状态。两个请求使用同一个 `device_id`，但读取的模块不同。
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "read-object-1",
+  "method": "fsp/read",
+  "params": {
+    "device_id": "2002186824385539",
+    "category": "object",
+    "object_ids": [1, 2]
+  }
+}
+```
+
+对象结果会返回容器编号、`container_status`、`sample_status`、体积和 `revision`；调用方据此确认 1、2 号进样瓶是否为无盖状态。随后读取系统：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "read-system-1",
+  "method": "fsp/read",
+  "params": {
+    "device_id": "2002186824385539",
+    "category": "system"
+  }
+}
+```
+
+系统结果中的 `state: "idle"` 与 `available: true` 表示设备当前可接收操作；`capability_revision` 和对象结果的 `revision` 用于后续并发检查。这样，读取接口同时给出对象和系统两类执行依据。
+
+## 接口示例二：调用加液操作
+
+控制接口以能力数据集中已声明的 `command_id` 为准。下面的请求调用“加液”操作，并同时引用对象编号、操作参数和系统修订号。
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "invoke-1",
+  "method": "fsp/invoke",
+  "params": {
+    "device_id": "2002186824385539",
+    "command_id": "add_liquid_with_material",
+    "expected_revision": "12",
+    "arguments": {
+      "container_type": "进样瓶",
+      "container_count": 2,
+      "container_ids": [1, 2],
+      "dispensing_plan": [
+        {
+          "sample_bottle_id": 1,
+          "source_bottle": {
+            "source_bottle_id": 1,
+            "ingredient_name": "示例物料",
+            "source_volume_mL": 0.5
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+| 请求内容 | 对应小模块 | 服务端要检查的内容 |
+| --- | --- | --- |
+| `container_type`、`container_ids` | 对象 | 类型和编号是否存在，且目标容器是否为无盖状态 |
+| `command_id` 与 `arguments` | 操作 | 指令是否已声明；参数类型、范围和单位是否符合操作定义 |
+| `expected_revision` | 系统 | 能力版本是否仍有效；设备是否空闲、可用且通过安全围栏 |
+
+由于该操作声明为异步，成功接收后可先返回任务标识：
+
+```json
+{
+  "result_type": "accepted",
+  "value": {
+    "task_id": "task-20260901-001",
+    "state": "queued"
+  },
+  "diagnostics": []
+}
+```
+
+调用方再使用异步任务接口读取进度、最终结果和诊断。任务成功后服务端提交实际对象状态；失败时不得伪造新的容器状态。
+
+## 设备接口要求
+
+设备服务必须：
+
+1. 使用稳定的 `device_id` 和能力修订号标识设备接口；
+2. 通过能力接口同时提供对象、操作和系统三类定义；
+3. 允许读取对象状态和系统状态，并返回修订号或观测时间；
+4. 只接受能力数据中已声明的操作与参数；
+5. 在执行控制操作前校验对象状态、参数约束和安全围栏；
+6. 返回实际状态变化、异步任务结果或结构化诊断。
+
+设备不需要改变既有内部实现；只要对外满足以上接口语义，就可以进入[技能提取](/specification/capability/overview)流程。
