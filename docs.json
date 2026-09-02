@@ -68,7 +68,7 @@
             ]
           },
           {
-            "group": "函数式实验方法",
+            "group": "验证和执行",
             "pages": [
               "specification/methods/overview",
               "specification/methods/validation",
