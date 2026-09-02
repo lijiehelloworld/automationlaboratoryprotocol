@@ -16,7 +16,7 @@ description: "说明设备接口如何表达输入、结果、状态版本和错
   "object": {
     "containers": []
   },
-  "control": {
+  "operation": {
     "parameters": {},
     "preconditions": []
   },
@@ -37,7 +37,7 @@ description: "说明设备接口如何表达输入、结果、状态版本和错
   "object": {
     "changes": []
   },
-  "control": {
+  "operation": {
     "operation_id": "add_liquid",
     "status": "accepted",
     "actual_parameters": {},
@@ -57,7 +57,7 @@ description: "说明设备接口如何表达输入、结果、状态版本和错
 | 部分 | 最低要求 |
 | --- | --- |
 | `object` | 返回容器当前可确认状态、变化与修订号；无变化也必须明确表达 |
-| `control` | 返回操作标识、受理或完成状态、实际参数和诊断 |
+| `operation` | 返回操作标识、受理或完成状态、实际参数和诊断 |
 | `system` | 返回设备状态、安全检查、任务、注意事项和观测时间 |
 
 ## 修订号与单位

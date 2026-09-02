@@ -18,7 +18,7 @@ description: "说明如何向设备提交已验证步骤并确认真实执行结
       "device_id": "device-01",
       "operation_id": "add_liquid",
       "object": {"container_id": "container-01", "expected_container_status": "无盖"},
-      "control": {"parameters": {"source_container_id": "source-01", "volume_mL": 0.5}},
+      "operation": {"parameters": {"source_container_id": "source-01", "volume_mL": 0.5}},
       "system": {"expected_device_state": "idle", "execution_mode": "async"}
     }
   ]
@@ -43,7 +43,7 @@ description: "说明如何向设备提交已验证步骤并确认真实执行结
     {
       "step_id": "step-1",
       "object": {"changes": [{"container_id": "container-01", "after_state": {"sample_status": "液体"}}]},
-      "control": {"operation_id": "add_liquid", "status": "succeeded", "diagnostics": []},
+      "operation": {"operation_id": "add_liquid", "status": "succeeded", "diagnostics": []},
       "system": {"device_state": "idle", "task": {"task_id": "task-001", "status": "succeeded"}, "notices": []}
     }
   ]

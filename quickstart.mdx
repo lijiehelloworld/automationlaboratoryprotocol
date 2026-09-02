@@ -13,7 +13,7 @@ ALL 的最小闭环由接口定义、编译、仿真和执行组成。FSP 不限
 {
   "operation_id": "add_liquid",
   "object": {"required_container_state": "无盖"},
-  "control": {"parameters": {"volume_mL": {"type": "number", "minimum": 0.05, "maximum": 0.8}}},
+  "operation": {"parameters": {"volume_mL": {"type": "number", "minimum": 0.05, "maximum": 0.8}}},
   "system": {"required_device_state": "idle", "safety_fences": ["容器容量足够"]}
 }
 ```

@@ -22,7 +22,7 @@ FSP 规定诊断应当能够说明失败发生在对象、操作或系统哪个�
 | --- | --- |
 | `code` | 稳定的机器可读错误码 |
 | `message` | 面向调用方的简明说明 |
-| `dimension` | `object`、`control` 或 `system` |
+| `dimension` | `object`、`operation` 或 `system` |
 | `path` | 出错字段或规则所在位置 |
 | `retryable` | 修正状态或参数后是否可重试 |
 | `details` | 与诊断有关的已脱敏事实 |
@@ -31,20 +31,20 @@ FSP 规定诊断应当能够说明失败发生在对象、操作或系统哪个�
 
 | 错误码 | 维度 | 含义 |
 | --- | --- | --- |
-| `invalid_operation` | control | 操作未定义或当前设备不支持 |
-| `invalid_parameter` | control | 参数缺失、类型错误或结构不合法 |
-| `parameter_out_of_range` | control | 参数超出声明范围或不在枚举中 |
+| `invalid_operation` | operation | 操作未定义或当前设备不支持 |
+| `invalid_parameter` | operation | 参数缺失、类型错误或结构不合法 |
+| `parameter_out_of_range` | operation | 参数超出声明范围或不在枚举中 |
 | `object_not_found` | object | 目标容器不可确认或不存在 |
 | `object_state_conflict` | object | 实际容器状态不满足执行前条件 |
 | `capacity_insufficient` | object | 容器剩余容量或样品量不满足要求 |
 | `system_state_conflict` | system | 设备实际状态与预期状态不一致 |
 | `revision_conflict` | system | 对象或系统修订号已变化 |
 | `safety_fence_failed` | system | 安全围栏、资源锁或设备保护未通过 |
-| `execution_failed` | control | 操作已开始但未完成 |
+| `execution_failed` | operation | 操作已开始但未完成 |
 | `result_unknown` | system | 无法确认设备是否完成或对象是否变化 |
 | `task_not_found` | system | 异步任务标识无法确认 |
 | `unsafe_cancellation` | system | 当前阶段不允许取消操作 |
 
 ## 返回规则
 
-输入在动作前被拒绝时，承载协议可使用自身错误格式返回上述诊断。设备已经受理操作后，无论成功、失败、取消或结果未知，都必须返回对象、操作和系统三段事实；诊断放在 `control.diagnostics` 或与其等价的位置。
+输入在动作前被拒绝时，承载协议可使用自身错误格式返回上述诊断。设备已经受理操作后，无论成功、失败、取消或结果未知，都必须返回对象、操作和系统三段事实；诊断放在 `operation.diagnostics` 或与其等价的位置。
