@@ -54,7 +54,7 @@
             ]
           },
           {
-            "group": "设备接口要求",
+            "group": "设备",
             "pages": [
               "specification/device-integration/overview"
             ]
