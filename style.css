@@ -10,8 +10,25 @@
 }
 
 @media (min-width: 768px) {
+  #footer > div {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: 0 !important;
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+  }
+
+  #footer > div > div:first-child {
+    display: block !important;
+    grid-column: 1;
+    grid-row: 1;
+    width: auto !important;
+  }
+
   #footer > div > div:first-child > div:last-child {
-    width: 100%;
+    width: auto;
   }
 
   #footer > div > div:first-child > div:last-child > div,
@@ -20,6 +37,16 @@
   }
 
   #footer > div > div:last-child > div:first-child {
-    margin-left: auto;
+    margin-left: 0;
+  }
+
+  #footer > div > div:nth-child(2) {
+    display: none;
+  }
+
+  #footer > div > div:last-child {
+    display: flex !important;
+    grid-column: 2;
+    grid-row: 1;
   }
 }
