@@ -1,53 +1,31 @@
 ---
 title: "快速开始"
-description: "从 FSP 设备定义到实验程序执行的最短路径"
+description: "从接口定义到编译、仿真和执行的最小闭环"
 ---
 
-<Steps>
-  <Step title="准备 FSP 设备定义">
-    在设备接入配置中提供操作、对象和系统定义。
-  </Step>
-  <Step title="编译/解释">
-    将实验目标、初始对象状态和 FSP 设备定义交给编译/解释器，取得类型化中间程序。
-  </Step>
-  <Step title="仿真">
-    使用同一设备定义版本检查参数、状态闭合、系统围栏和完成条件。
-  </Step>
-  <Step title="执行">
-    仅把 `simulation_status=passed` 的程序交给执行器，由执行器按 `read`、`write` 或 `invoke` 分类通过 FSP 下发。
-  </Step>
-  <Step title="核验结果">
-    同步结果立即验证；异步操作通过系统任务查询，成功后再提交实际对象状态。
-  </Step>
-</Steps>
+ALL 的最小闭环由接口定义、编译、仿真和执行组成。FSP 不限定设备接口使用 HTTP、CLI、MCP、RPC 还是 SDK，但所有参与执行的接口都必须具备对象、控制和系统三段描述。
 
-## 最小执行请求
+## 1. 定义设备接口
+
+为每项设备操作声明目标容器、控制参数、设备条件和结果结构。以加液为例：对象描述目标容器的无盖状态与剩余容量；控制描述液体来源和加液量；系统描述设备空闲状态与安全围栏。
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "execute-1",
-  "method": "fsp/invoke",
-  "params": {
-    "device_id": "device-01",
-    "operation_id": "add_liquid",
-    "arguments": {
-      "container_id": "container-01",
-      "volume_mL": 0.5
-    },
-    "expected_system_revision": "state-21"
-  }
+  "operation_id": "add_liquid",
+  "object": {"required_container_state": "无盖"},
+  "control": {"parameters": {"volume_mL": {"type": "number", "minimum": 0.05, "maximum": 0.8}}},
+  "system": {"required_device_state": "idle", "safety_fences": ["容器容量足够"]}
 }
 ```
 
-<Warning>
-执行请求必须来自当前 FSP 设备定义和已通过的仿真结果，不得根据设备名称猜测接口或参数。
-</Warning>
+## 2. 编译和仿真
 
-## 阅读顺序
+编译/解释器把研究目标和实际容器状态转换为类型化中间程序；仿真器在隔离状态中检查参数范围、容器容量、状态变化和安全围栏。只有仿真通过的步骤才能交给执行器。
 
-1. [协议概述](/specification/overview)
-2. [编译/解释器](/specification/engine/compiler)
-3. [仿真器](/specification/engine/simulator)
-4. [执行器](/specification/engine/executor)
-5. [FSP 概述](/specification/fsp/overview)
+## 3. 执行并核验
+
+执行器将每一步的对象、控制、系统输入提交给设备现有接口或适配层，并取得同样三段的实际响应：对象给出容器变化，控制给出执行结果，系统给出设备状态、安全检查和任务信息。
+
+异步操作在系统段返回任务信息。任务查询、取消和结果获取由实际承载方式提供等价能力；FSP 只要求每次结果返回都保持三段结构。
+
+更多字段和示例见[接口契约](/specification/base-protocol)、[控制](/specification/fsp/operations)和[接口定义](/specification/device-integration/overview)。

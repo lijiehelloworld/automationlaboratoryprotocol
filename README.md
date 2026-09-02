@@ -2,7 +2,7 @@
 
 Automation Laboratory Language（ALL，自动化实验室语言）规范文档。
 
-ALL 使用 HTTPS 远程连接。ALL 语言引擎由编译/解释器、仿真器和执行器组成；其设备通信部分 FSP 从操作、对象和系统三个维度说明设备接口。
+ALL 语言引擎由编译/解释器、仿真器和执行器组成；其设备通信部分 FSP 从对象、控制和系统三个维度约束设备接口。FSP 不限定接口承载方式，HTTP、CLI、MCP、RPC 和厂商 SDK 均可使用。
 
 ## 本地预览
 

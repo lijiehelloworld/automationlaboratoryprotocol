@@ -1,162 +1,57 @@
 ---
 title: "系统"
-description: "设备状态、安全围栏、异步任务和结果验证"
+description: "设备状态、安全围栏、异步任务和注意事项"
 ---
 
-## 作用
+系统维度说明设备此刻是否允许执行操作，以及执行后设备处于什么状态。它包含设备状态、安全围栏、执行模式、异步任务和注意事项。
 
-系统维度描述设备运行条件和运行时状态，包括可用性、安全围栏、状态修订、异步任务以及结果验证。设备级状态可以被多项操作引用，但每项操作仍须声明自身的前置条件。
-
-## 系统定义
+## 请求中的系统条件
 
 ```json
 {
-  "device_id": "device-01",
   "system": {
-    "states": ["offline", "idle", "busy", "paused", "fault", "maintenance", "unknown"],
-    "current_state": "idle",
-    "available": true,
-    "revision": "state-21",
-    "safety_fences": [
-      "fault 或 maintenance 状态禁止执行 invoke",
-      "busy 状态不得创建冲突任务"
+    "expected_device_state": "idle",
+    "expected_system_revision": "system-21",
+    "execution_mode": "async",
+    "preconditions": [
+      "设备无故障",
+      "目标容器已定位",
+      "当前不存在冲突任务"
     ],
-    "task_support": {
-      "enabled": true,
-      "statuses": ["queued", "running", "succeeded", "failed", "cancelled", "unknown"],
-      "cancellation_supported": true
-    },
-    "observed_at": "2026-09-02T06:00:00Z"
-  }
-}
-```
-
-| 字段 | 作用 |
-| --- | --- |
-| `states[]` | 声明设备能够区分的系统状态 |
-| `current_state` | 给出当前可确认状态 |
-| `available` | 表示当前是否接受请求 |
-| `revision` | 防止写入或调用基于过期状态执行 |
-| `safety_fences[]` | 给出设备服务必须执行的保护规则 |
-| `task_support` | 声明长任务的状态和取消支持 |
-| `observed_at` | 给出状态观测时间 |
-
-## 操作中的系统约束
-
-```json
-{
-  "operation_id": "add_liquid",
-  "request_class": "invoke",
-  "system": {
-    "required_states": ["idle"],
-    "forbidden_states": ["offline", "fault", "maintenance"],
     "safety_fences": [
-      "目标容器剩余容量必须大于或等于加液体积",
-      "单次加液量不得超过操作声明上限"
-    ],
-    "result_verification": [
-      "任务必须进入 succeeded 状态",
-      "返回实际加液量和目标容器执行后状态"
+      "单次加液量不得超过操作上限",
+      "目标容器剩余容量必须大于等于加液量"
     ]
   }
 }
 ```
 
-安全围栏必须在 `write` 或 `invoke` 请求进入设备前判断。`invoke` 还必须在动作完成后执行结果验证。上层程序或自然语言指令不能绕过这些规则。
-
-## 状态读取
+## 响应中的系统事实
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "read-system-1",
-  "method": "fsp/read",
-  "params": {
-    "device_id": "device-01",
-    "operation_id": "read_system_state",
-    "arguments": {}
-  }
-}
-```
-
-```json
-{
-  "result_type": "complete",
-  "value": {
-    "state": "idle",
-    "available": true,
-    "current_task": null,
-    "revision": "state-21",
+  "system": {
+    "device_state": "busy",
+    "system_revision": "system-22",
+    "safety_checks": [
+      {"rule": "设备无故障", "passed": true},
+      {"rule": "容器剩余容量足够", "passed": true}
+    ],
+    "task": {
+      "task_id": "task-001",
+      "status": "queued",
+      "cancellable": true
+    },
+    "notices": ["任务执行期间不得移动目标容器"],
     "observed_at": "2026-09-02T06:00:00Z"
-  },
-  "diagnostics": []
+  }
 }
 ```
 
 ## 异步任务
 
-不能在一次请求内可靠完成的操作可以返回系统任务。异步是执行方式，不改变操作的请求分类、参数、对象约束和结果定义。
+当 `execution_mode=async` 时，设备接口或适配层必须返回 `system.task`。实现可以通过 HTTP、CLI、MCP、RPC 或 SDK 提供等价的任务查询与取消能力，但 FSP 不规定其名称或路径。
 
-### 创建结果
+任务状态仅可为 `queued`、`running`、`succeeded`、`failed`、`cancelled` 或 `unknown`。每次任务状态查询都必须返回对象、控制和系统三段事实：对象给出当前容器状态，控制给出执行进度或结果，系统给出任务状态、安全检查和注意事项。
 
-```json
-{
-  "result_type": "task",
-  "task": {
-    "task_id": "task-001",
-    "device_id": "device-01",
-    "operation_id": "add_liquid",
-    "request_class": "invoke",
-    "status": "queued",
-    "accepted_at": "2026-09-02T06:00:00Z",
-    "cancellable": true
-  },
-  "diagnostics": []
-}
-```
-
-### 查询任务
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "task-read-1",
-  "method": "fsp/get_task",
-  "params": {
-    "device_id": "device-01",
-    "task_id": "task-001"
-  }
-}
-```
-
-```json
-{
-  "result_type": "complete",
-  "value": {
-    "task_id": "task-001",
-    "device_id": "device-01",
-    "operation_id": "add_liquid",
-    "status": "succeeded",
-    "accepted_at": "2026-09-02T06:00:00Z",
-    "started_at": "2026-09-02T06:00:01Z",
-    "completed_at": "2026-09-02T06:00:12Z",
-    "cancellable": false,
-    "result": {
-      "actual_volume_mL": 0.5,
-      "container_status": "无盖"
-    }
-  },
-  "diagnostics": []
-}
-```
-
-### 取消任务
-
-`fsp/cancel_task` 表示请求取消，不表示设备已经停止。服务端必须返回实际任务状态；不可取消时返回结构化诊断。
-
-### 状态提交
-
-- `succeeded`：完成条件和结果验证全部满足后，才能提交实际状态变化；
-- `failed`：不得提交预期成功状态，必须返回可确认的实际状态；
-- `cancelled`：返回取消后可确认的对象和系统状态；
-- `unknown`：不得假定成功，执行器必须重新读取相关状态。
+只有任务进入 `succeeded` 且结果验证通过后，设备或执行器才可提交对象新状态。`failed`、`cancelled` 和 `unknown` 均不得提交预期成功状态。

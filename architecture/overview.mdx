@@ -3,32 +3,22 @@ title: "总体设计"
 description: "ALL 语言引擎、FSP 与设备之间的总体关系"
 ---
 
-Automation Laboratory Language（ALL）位于智能体与实验设备之间。ALL 语言引擎负责把实验意图转换为可验证程序；FSP 负责把程序中的设备操作映射为远程设备请求。
+ALL 位于 AI 智能体和物理设备之间。语言引擎负责编译、仿真和执行；FSP 以对象、控制和系统三段结构连接多个设备。
 
 ## 总体架构
 
-![ALL 总体架构](/images/all-language-architecture.png)
+![ALL 总体架构](/images/all-language-architecture.jpg)
 
-## 模块关系
-
-1. AI 智能体向 ALL 提交实验目标并接收结构化结果。
-2. [编译/解释器](/specification/engine/compiler)读取科学目标、对象状态和 FSP 设备定义，生成类型化中间程序。
-3. [仿真器](/specification/engine/simulator)验证参数、状态转换、系统围栏和科学完成条件，不调用物理设备。
-4. [执行器](/specification/engine/executor)只接收通过仿真的程序，通过 FSP 下发操作并核验实际结果。
-5. FSP 从[操作](/specification/fsp/operations)、[对象](/specification/fsp/objects)和[系统](/specification/fsp/system)三个维度统一说明设备接口。
-6. 设备保留既有 API、SDK 或驱动，由适配层映射为 FSP 语义并被动接收调用。
-
-## 主数据流
+## 数据流
 
 ```text
-实验目标
-  → 编译/解释器：设备定义与实验意图 → 中间程序
-  → 仿真器：中间程序 + 初始状态 → 仿真报告
-  → 执行器：通过仿真的程序 → FSP 请求
-  → FSP：操作 + 对象 + 系统 → 设备调用
-  → 实际状态、结果与诊断
+AI 智能体
+  ↕
+ALL 语言引擎：编译/解释器 → 仿真器 → 执行器
+  ↕
+FSP：对象 + 控制 + 系统
+  ↕
+多个设备
 ```
 
-## 边界
-
-ALL 语言引擎不替代设备安全控制；FSP 不生成实验计划；物理设备不负责解释自然语言目标。各层只对自身输入、输出和可观察行为负责。
+设备由适配层接入，保留既有接口；每次操作都必须返回实际对象状态、控制执行情况和系统状态。

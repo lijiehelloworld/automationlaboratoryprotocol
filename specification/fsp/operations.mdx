@@ -1,328 +1,154 @@
 ---
-title: "操作"
-description: "设备暴露的函数、参数、状态转换和返回值"
+title: "控制"
+description: "设备操作的参数、前置条件、执行结果与三段响应"
 ---
 
-## 定义
+控制维度定义设备做什么、需要哪些参数、如何校验并如何报告执行结果。每项操作仍必须同时具备对象和系统维度。
 
-操作是设备通过 FSP 暴露的具体接口。FSP 关注接口语义，不强制设备采用特定 URL、HTTP 方法或驱动实现。
-
-每个操作至少说明：稳定操作标识、请求分类、名称、用途、对象、参数、状态变化、系统约束、返回值、诊断和同步或异步模式。
-
-`request_class` 是请求风险分类，不是具体请求名称，只能是：
-
-| 值 | 含义 | 强制要求 |
-| --- | --- | --- |
-| `read` | 读取设备、容器或任务状态，不改变设备状态 | 通常可在设备在线且目标可读时调用；必须返回观测时间和数据新鲜度 |
-| `write` | 修改设备状态、配置或工艺参数，不以物理动作为目的 | 必须校验字段可写性、参数范围和预期修订号；完成后必须验证写入值 |
-| `invoke` | 执行会产生实际物理动作的设备函数 | 必须在下发前检查对象状态、设备状态、全部前置条件和安全围栏，并在完成后验证结果 |
-
-同一分类下可以有任意多项具体操作。例如，读取温度和读取任务进度都属于 `read`，设置温度目标值和修改速度参数都属于 `write`，加液和移动容器都属于 `invoke`。具体操作始终由 `operation_id` 区分。
-
-## 非规范性完整操作集
-
-以下三个操作共同构成一个容器开盖、加液、关盖的设备示例。具体设备实现可以声明不同操作，但每条操作必须从操作、对象和系统三个维度提供同等完整的信息。
-
-### 开盖 `open_caps`
-
-| 项目 | 定义 |
-| --- | --- |
-| `request_class` | `invoke` |
-| `execution_mode` | `sync` |
-| 对象维度 | 适用离心瓶和 50ml 耐热瓶，容器必须有盖 |
-| 前置状态 | `container_status == "有盖"`；样品可为空、液体、固体或固液混合物 |
-| 状态变化 | `container_status: 有盖 → 无盖`；样品状态保持不变 |
-| 系统维度 | 设备必须空闲且无故障；完成后验证实际开盖容器和容器状态 |
-
-| 参数 | 类型 | 必填 | 范围或枚举 | 作用 |
-| --- | --- | --- | --- | --- |
-| `container_type` | `enum` | 是 | `离心瓶`、`50ml耐热瓶` | 指定容器类型 |
-| `container_count` | `int` | 是 | `1..10` | 指定当前实验中的容器总数 |
-| `container_ids` | `array[int]` | 是 | `max(container_ids) <= container_count` | 指定本次涉及的容器 |
-| `open_cap_bottle_ids` | `array[object]` | 是 | 每个 `bottle_id` 必须属于 `container_ids` | 指定实际开盖瓶号 |
-| `keep_cap` | `int` | 是 | `0` 或 `1`，默认 `1` | 指定是否保留瓶盖供后续关盖 |
-
-强制约束：容器必须有盖；容器数量与编号必须匹配；开盖瓶号必须属于本次容器；`keep_cap` 只能为 `0` 或 `1`。成功返回 `container_type`、`container_status`、`sample_status`、`opened_bottles[]` 和 `opened_bottles_count`。
-
-### 关盖 `close_caps`
-
-| 项目 | 定义 |
-| --- | --- |
-| `request_class` | `invoke` |
-| `execution_mode` | `sync` |
-| 对象维度 | 适用离心瓶和 50ml 耐热瓶，容器必须无盖 |
-| 前置状态 | `container_status == "无盖"`，且已经完成对应开盖操作 |
-| 状态变化 | `container_status: 无盖 → 有盖`；样品状态保持不变 |
-| 系统维度 | 设备必须空闲且持有对应瓶盖；完成后验证实际关盖容器和容器状态 |
-
-| 参数 | 类型 | 必填 | 范围或枚举 | 作用 |
-| --- | --- | --- | --- | --- |
-| `container_type` | `enum` | 是 | `离心瓶`、`50ml耐热瓶` | 指定容器类型 |
-| `container_count` | `int` | 是 | `1..10` | 指定当前实验中的容器总数 |
-| `container_ids` | `array[int]` | 是 | `max(container_ids) <= container_count` | 指定本次涉及的容器 |
-| `close_cap_bottle_ids` | `array[object]` | 是 | 每个 `bottle_id` 必须属于 `container_ids` | 指定实际关盖瓶号 |
-
-强制约束：容器必须无盖；容器数量与编号必须匹配；关盖瓶号必须属于本次容器；容器内液体体积不得超过 30 mL。成功返回 `container_type`、`container_status`、`sample_status`、`closed_bottles[]` 和 `closed_bottles_count`。
-
-### 加液 `add_liquid_with_material`
-
-以下非规范性示例展示一条完整设备操作：
+## 操作定义
 
 ```json
 {
-  "operation_id": "add_liquid_with_material",
-  "request_class": "invoke",
-  "execution_mode": "async",
-  "name": "加液_物料绑定",
-  "description": "通过指定已经记录的物料进行加液操作。",
-  "object": {
-    "container_types": ["离心瓶", "50ml耐热瓶"],
-    "required_states": {
-      "container_status": ["无盖"],
-      "sample_status": ["空", "液体", "固体", "固液混合物"]
-    }
-  },
-  "control": {
-  "initial_state": {
-    "container_type": ["离心瓶", "50ml耐热瓶"],
-    "container_status": ["无盖"],
-    "sample_status": ["空", "液体", "固体", "固液混合物"]
-  },
-  "effects": {
-    "container_status": "无盖",
-    "sample_status": {
-      "空": "液体",
-      "液体": "液体",
-      "固体": "固液混合物",
-      "固液混合物": "固液混合物"
-    }
-  },
+  "operation_id": "add_liquid",
+  "name": "加液",
+  "description": "向指定容器加入定量液体",
   "parameters": [
     {
-      "name": "container_type",
-      "type": "enum",
+      "name": "source_container_id",
+      "type": "string",
       "required": true,
-      "allowed_values": ["离心瓶", "50ml耐热瓶"],
-      "description": "目标容器类型"
+      "description": "供液容器标识"
     },
     {
-      "name": "container_count",
-      "type": "int",
+      "name": "volume_mL",
+      "type": "number",
       "required": true,
-      "minimum": 1,
-      "maximum": 10,
-      "description": "当前实验中该容器类型的总数量"
-    },
-    {
-      "name": "container_ids",
-      "type": "array[int]",
-      "required": true,
-      "constraints": ["max(container_ids) <= container_count"],
-      "description": "本次操作涉及的容器编号列表"
-    },
-    {
-      "name": "dispensing_plan",
-      "type": "array[object]",
-      "required": true,
-      "description": "加样方案列表，各加样瓶的原液取用顺序全程固定",
-      "children": [
-        {
-          "name": "sample_bottle_id",
-          "type": "int",
-          "required": true,
-          "constraints": ["sample_bottle_id in container_ids"],
-          "description": "加样瓶号，即目标容器编号"
-        },
-        {
-          "name": "source_bottle",
-          "type": "object",
-          "required": true,
-          "children": [
-            {
-              "name": "source_bottle_id",
-              "type": "int",
-              "required": true,
-              "minimum": 1,
-              "maximum": 16,
-              "description": "原液瓶编号"
-            },
-            {
-              "name": "ingredient_name",
-              "type": "string",
-              "required": true,
-              "description": "配料名称"
-            },
-            {
-              "name": "source_volume_mL",
-              "type": "float",
-              "unit": "mL",
-              "required": true,
-              "exclusive_minimum": 0,
-              "maximum": 3.0,
-              "description": "原液用量；单次移液量还必须满足不超过 1 mL 的操作约束"
-            }
-          ]
-        }
-      ]
+      "minimum": 0.05,
+      "maximum": 0.8,
+      "unit": "mL",
+      "description": "单次加液体积"
     }
   ],
-  "constraints": [
-    "container_status == '无盖'",
-    "1 <= container_count <= 10",
-    "max(container_ids) <= container_count",
-    "sample_bottle_id in container_ids",
-    "1 <= source_bottle_id <= 16",
-    "source_volume_mL <= 1.0",
-    "单种溶液总加注量 <= 3.0 mL",
-    "容器内液体体积 <= 30.0 mL"
-  ],
-  "returns": [
-    {
-      "name": "containers",
-      "type": "array[object]",
-      "children": [
-        {"name": "container_type", "type": "enum", "allowed_values": ["离心瓶", "50ml耐热瓶"]},
-        {"name": "container_status", "type": "enum", "allowed_values": ["无盖"]},
-        {"name": "sample_status", "type": "string"},
-        {"name": "container_id", "type": "int"},
-        {"name": "sample_volume", "type": "float", "unit": "mL"},
-        {"name": "source_bottle_ids", "type": "array[int]"}
-      ]
-    }
+  "preconditions": [
+    "目标容器必须为无盖状态",
+    "目标容器剩余容量必须大于等于加液量"
   ]
+}
+```
+
+## 加液接口示例
+
+以下是传输无关的接口载荷。HTTP 请求体、CLI 输入文件、MCP 工具输入或 SDK 参数对象均可采用同一结构。
+
+### 输入
+
+```json
+{
+  "device_id": "device-01",
+  "operation_id": "add_liquid",
+  "object": {
+    "containers": [
+      {
+        "container_id": "container-01",
+        "object_type_id": "container.centrifuge_tube",
+        "before_state": {
+          "container_status": "无盖",
+          "sample_status": "空",
+          "sample_volume_mL": 0
+        },
+        "capacity": {"remaining_volume_mL": 45}
+      }
+    ]
+  },
+  "control": {
+    "parameters": {
+      "source_container_id": "source-01",
+      "volume_mL": 0.5
+    },
+    "preconditions": [
+      "volume_mL 位于 0.05 至 0.8 mL",
+      "容器处于无盖状态"
+    ]
   },
   "system": {
-    "required_device_states": ["idle"],
-    "forbidden_device_states": ["offline", "fault", "maintenance"],
-    "safety_fences": [
-      "目标容器剩余容量必须满足本次加液",
-      "全部强制控制约束必须在设备动作前通过"
-    ],
-    "result_verification": [
-      "任务必须成功完成",
-      "返回实际加液结果和执行后容器状态"
+    "expected_device_state": "idle",
+    "expected_system_revision": "system-21",
+    "execution_mode": "async",
+    "preconditions": ["设备无故障", "当前没有冲突任务"],
+    "safety_fences": ["目标容器容量足够", "供液容器可用"]
+  }
+}
+```
+
+### 受理响应
+
+```json
+{
+  "object": {
+    "changes": [
+      {
+        "container_id": "container-01",
+        "before_state": {"container_status": "无盖", "sample_status": "空", "sample_volume_mL": 0},
+        "after_state": null,
+        "revision": "object-21"
+      }
     ]
-  }
-}
-```
-
-上述示例重点展示操作参数的层级、范围、约束和返回字段。对象兼容条件与系统安全条件必须同时存在于该操作的完整定义中。`execution_mode` 取值只能是 `sync` 或 `async`，必须由 FSP 适配器根据设备接口声明，不能由编译/解释器猜测。
-
-## 参数要求
-
-参数定义应当包含下列适用字段：
-
-```text
-name
-type
-unit
-required
-default
-minimum / maximum
-allowed_values
-description
-children
-constraints
-```
-
-嵌套参数必须展开到可验证层级。例如 `dispensing_plan` 应当说明 `sample_bottle_id`、`source_bottle_id`、`ingredient_name` 和 `source_volume_mL`，不能只写“对象数组”。
-
-## 读取类请求
-
-`fsp/read` 用于执行 `request_class=read` 的具体操作。读取通常不受工艺步骤顺序限制，但仍需满足设备在线、目标存在和数据源可用等基本条件。
-
-读取类操作必须声明读取范围、输入 Schema、输出 Schema、`observed_at` 和数据新鲜度。读取不得修改设备、容器或工艺参数；无法取得新鲜数据时应返回诊断或明确标记数据过期，不得把旧缓存伪装为当前状态。
-
-## 调用类请求
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "invoke-1",
-  "method": "fsp/invoke",
-  "params": {
-    "device_id": "2002186824385539",
-    "operation_id": "add_liquid_with_material",
-    "arguments": {
-      "container_type": "离心瓶",
-      "container_count": 2,
-      "container_ids": [1],
-      "dispensing_plan": [
-        {
-          "sample_bottle_id": 1,
-          "source_bottle": {
-            "ingredient_name": "试剂A",
-            "source_volume_mL": 0.5,
-            "source_bottle_id": 1
-          }
-        }
-      ]
-    },
-    "expected_revision": "7"
-  }
-}
-```
-
-`fsp/invoke` 表示请求分类入口，`add_liquid_with_material` 才是本次实际操作。执行器根据已通过仿真的中间程序取得 `operation_id` 与参数，不能直接按字符串猜测。
-
-## 写入类请求
-
-只有 FSP 设备定义将某个字段声明为可写时，执行器才能使用 `fsp/write`。请求参数与 `fsp/invoke` 使用相同外层：`device_id`、`operation_id`、`arguments` 和 `expected_system_revision`。
-
-写入类请求必须在接触设备前完成以下检查：
-
-1. `operation_id` 的 `request_class` 必须为 `write`；
-2. 目标字段必须明确声明为可写；
-3. 新值必须通过类型、范围、枚举和跨字段约束；
-4. `expected_revision` 必须与当前状态修订号一致；
-5. 写入完成后必须回读目标值，或取得具有同等可信度的设备确认。
-
-写入结果未经验证时不得返回成功，也不得提交新的状态修订号。
-
-本页非规范性设备示例只声明调用类操作，因此不提供写入类操作示例。设备只有在 FSP 定义中声明可写字段后才能提供相应写入操作。
-
-## 强制约束
-
-`invoke` 类操作开始前必须校验 FSP 设备定义中的强制条件，包括：
-
-- 初始容器状态；
-- 样品状态；
-- 参数类型、范围和枚举；
-- 容器数量与编号关系；
-- 多参数耦合约束；
-- 系统安全围栏。
-
-所有强制错误必须在 `diagnostics` 中返回。存在强制错误时不得接触物理设备，也不得提交研究对象新状态。动作完成后还必须验证设备结果、对象状态和声明的状态变化；验证失败时不得把预期结果写成实际结果。
-
-## 返回
-
-同步成功时，返回值必须符合操作定义中的返回 Schema，并包含实际状态变化。异步操作返回任务句柄，见[系统](/specification/fsp/system)。
-
-### 同步输出示例
-
-```json
-{
-  "result_type": "complete",
-  "value": {
-    "status": "succeeded",
-    "state_committed": true,
-    "result": {
-      "container_type": "离心瓶",
-      "container_status": "无盖",
-      "sample_status": "空",
-      "opened_bottles": [1, 2],
-      "opened_bottles_count": 2
-    },
-    "revision": "8"
   },
-  "diagnostics": []
+  "control": {
+    "operation_id": "add_liquid",
+    "status": "accepted",
+    "actual_parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
+    "diagnostics": []
+  },
+  "system": {
+    "device_state": "busy",
+    "system_revision": "system-22",
+    "safety_checks": [
+      {"rule": "目标容器容量足够", "passed": true},
+      {"rule": "设备无故障", "passed": true}
+    ],
+    "task": {"task_id": "task-001", "status": "queued", "cancellable": true},
+    "notices": ["任务完成前不得移动目标容器"],
+    "observed_at": "2026-09-02T06:00:00Z"
+  }
 }
 ```
 
-| 输出字段 | 作用 |
-| --- | --- |
-| `status` | 表示操作成功、失败或结果未知 |
-| `state_committed` | 表示是否已依据设备确认结果提交状态 |
-| `result` | 保存操作定义中声明的返回字段 |
-| `revision` | 返回操作完成后的新状态修订号 |
-| `diagnostics[]` | 保存稳定编码、消息、字段路径和重试信息 |
+### 完成响应
+
+```json
+{
+  "object": {
+    "changes": [
+      {
+        "container_id": "container-01",
+        "before_state": {"container_status": "无盖", "sample_status": "空", "sample_volume_mL": 0},
+        "after_state": {"container_status": "无盖", "sample_status": "液体", "sample_volume_mL": 0.5},
+        "revision": "object-22"
+      }
+    ]
+  },
+  "control": {
+    "operation_id": "add_liquid",
+    "status": "succeeded",
+    "actual_parameters": {"actual_volume_mL": 0.5},
+    "diagnostics": []
+  },
+  "system": {
+    "device_state": "idle",
+    "system_revision": "system-23",
+    "safety_checks": [{"rule": "结果体积与设定值一致", "passed": true}],
+    "task": {"task_id": "task-001", "status": "succeeded", "cancellable": false},
+    "notices": [],
+    "observed_at": "2026-09-02T06:00:12Z"
+  }
+}
+```
+
+## 强制规则
+
+- 接口执行前必须校验对象状态、控制参数与系统条件；
+- 接口响应必须返回对象实际状态、控制执行状态及系统事实；
+- 安全围栏的检查结果必须逐项返回；
+- 失败、取消或未知结果时，不得提交预期成功状态；
+- FSP 不规定该接口在 HTTP、CLI、MCP 或 SDK 中的具体名称与路径。

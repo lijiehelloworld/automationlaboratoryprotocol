@@ -3,49 +3,20 @@ title: "Automation Laboratory Language"
 description: "ALL 自动化实验室语言与 FSP 设备通信规范"
 ---
 
-Automation Laboratory Language（ALL，自动化实验室语言）把实验目标转换为可编译、可仿真并可执行的程序。Function State Protocol（FSP，函数状态协议）位于 ALL 内部，负责向已配置设备下发操作并返回对象、系统、结果和诊断。
+Automation Laboratory Language（ALL，自动化实验室语言）将实验目标转换为可编译、可仿真、可执行的程序。FSP 是 ALL 内部面向设备的接口语义规范。
 
 <CardGroup cols={2}>
-  <Card title="阅读规范" icon="book" href="/specification/overview">
-    查看协议边界、消息语义、接口和符合性要求。
-  </Card>
-  <Card title="查看总体设计" icon="diagram-project" href="/architecture/overview">
-    理解 ALL 语言引擎、FSP 和物理设备的关系。
-  </Card>
-  <Card title="快速开始" icon="bolt" href="/quickstart">
-    从设备定义到编译、仿真和执行了解最短路径。
-  </Card>
-  <Card title="名词解释" icon="spell-check" href="/architecture/terms">
-    查询协议术语和职责边界。
-  </Card>
+  <Card title="阅读规范" icon="book" href="/specification/overview">查看协议边界、接口和符合性要求。</Card>
+  <Card title="查看总体设计" icon="diagram-project" href="/architecture/overview">理解 ALL 语言引擎、FSP 与设备的关系。</Card>
+  <Card title="快速开始" icon="bolt" href="/quickstart">从设备定义到编译、仿真和执行。</Card>
+  <Card title="名词解释" icon="spell-check" href="/architecture/terms">查询术语和职责边界。</Card>
 </CardGroup>
 
 ## 核心组成
 
 <CardGroup cols={2}>
-  <Card title="编译/解释器" href="/specification/engine/compiler">
-    把设备接口定义和实验意图转换为类型化中间程序。
-  </Card>
-  <Card title="仿真器" href="/specification/engine/simulator">
-    验证参数、状态、系统围栏和科学完成条件。
-  </Card>
-  <Card title="执行器" href="/specification/engine/executor">
-    通过 FSP 下发已验证程序并核验实际结果。
-  </Card>
-  <Card title="FSP 函数状态协议" href="/specification/fsp/overview">
-    从操作、对象和系统三个维度统一设备通信。
-  </Card>
+  <Card title="编译/解释器" href="/specification/engine/compiler">把设备定义和实验意图转换为中间程序。</Card>
+  <Card title="仿真器" href="/specification/engine/simulator">验证参数、状态、围栏和完成条件。</Card>
+  <Card title="执行器" href="/specification/engine/executor">通过符合 FSP 的设备接口执行并核验实际结果。</Card>
+  <Card title="FSP 协议" href="/specification/fsp/overview">使用对象、控制和系统三段结构表达设备操作。</Card>
 </CardGroup>
-
-## 设备接入原则
-
-- 设备接口以操作、对象和系统三个维度完整说明；
-- `read`、`write` 和 `invoke` 是风险分类，不是固定接口名称；
-- 设备可以保留原有 API、SDK 或驱动，通过适配器接入；
-- 异步任务属于系统运行机制；
-- 设备被动接收 FSP 请求，不负责解释实验目标。
-
-## 规范状态
-
-- 版本：`2026-09-02`
-- 状态：草案 0.3

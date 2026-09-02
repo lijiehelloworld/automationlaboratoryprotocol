@@ -1,134 +1,73 @@
 ---
-title: "基础协议"
-description: "ALL 远程消息、结果、修订和 FSP 方法命名"
+title: "接口契约"
+description: "FSP 的传输无关数据结构、修订和错误语义"
 ---
 
-## 协议边界
+## 适用范围
 
-ALL 规定调用方、语言引擎和 FSP 服务之间可观察的消息语义。FSP 面向已配置设备。设备可以通过适配器接入，不需要修改固件或放弃原有接口。
+本规范只定义设备接口必须表达的数据结构与行为，不定义 HTTP 路径、CLI 命令、MCP 工具名、RPC 名称或消息封装格式。实现可以自行选择连接和传输方式。
 
-## 远程连接
-
-正式部署应提供稳定 HTTPS 端点：
-
-```text
-POST https://lab.example.com/all
-```
-
-基础版本使用 JSON-RPC 2.0。一个 HTTP 请求只包含一个协议请求，不使用批处理。
-
-## 请求消息
+## 通用操作输入
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "req-0001",
-  "method": "fsp/invoke",
-  "params": {
-    "device_id": "device-01",
-    "operation_id": "add_liquid",
-    "arguments": {"container_id": "container-01", "volume_mL": 0.5},
-    "expected_system_revision": "state-21"
+  "device_id": "device-01",
+  "operation_id": "add_liquid",
+  "object": {
+    "containers": []
   },
-  "meta": {
-    "protocol_version": "2026-09-02",
-    "caller": "laboratory-agent"
+  "control": {
+    "parameters": {},
+    "preconditions": []
+  },
+  "system": {
+    "expected_device_state": "idle",
+    "expected_system_revision": "system-21",
+    "execution_mode": "async",
+    "preconditions": [],
+    "safety_fences": []
   }
 }
 ```
 
-| 字段 | 必需 | 说明 |
-| --- | --- | --- |
-| `jsonrpc` | 是 | 固定为 `2.0` |
-| `id` | 是 | 调用方生成的请求标识 |
-| `method` | 是 | 标准方法，位于 `fsp/*` 命名空间 |
-| `params` | 是 | 方法参数，没有参数时使用空对象 |
-| `meta.protocol_version` | 是 | 调用方使用的协议版本 |
-| `meta.caller` | 否 | 调用方名称，用于审计和诊断 |
-
-## FSP 方法
-
-```text
-fsp/read
-fsp/write
-fsp/invoke
-fsp/get_task
-fsp/cancel_task
-```
-
-对象、操作和系统是设备接口的三个说明维度，不各自形成顶层命名空间。`read`、`write` 和 `invoke` 是风险分类；具体接口始终由 `operation_id` 区分。任务方法属于系统运行机制。
-
-## 成功响应
+## 通用操作输出
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "req-0001",
-  "result": {
-    "result_type": "complete",
-    "value": {},
-    "system_revision": "state-22",
-    "observed_at": "2026-09-02T06:00:12Z",
+  "object": {
+    "changes": []
+  },
+  "control": {
+    "operation_id": "add_liquid",
+    "status": "accepted",
+    "actual_parameters": {},
     "diagnostics": []
+  },
+  "system": {
+    "device_state": "busy",
+    "system_revision": "system-22",
+    "safety_checks": [],
+    "task": null,
+    "notices": [],
+    "observed_at": "2026-09-02T06:00:00Z"
   }
 }
 ```
 
-`result_type` 只能是：
-
-| 值 | 说明 |
+| 部分 | 最低要求 |
 | --- | --- |
-| `complete` | 当前请求已经完成 |
-| `task` | 请求已转为系统异步任务 |
-
-## 异步响应
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "req-0002",
-  "result": {
-    "result_type": "task",
-    "task": {
-      "task_id": "task-001",
-      "status": "queued",
-      "cancellable": true
-    },
-    "diagnostics": []
-  }
-}
-```
-
-任务状态和取消语义见[系统](/specification/fsp/system)。
-
-## 协议错误
-
-请求进入设备执行前发生的协议错误使用 JSON-RPC `error`。设备执行已经开始后的失败通过普通 `result` 返回，保留实际任务状态、设备状态和诊断。
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "req-0001",
-  "error": {
-    "code": -32602,
-    "message": "参数无效",
-    "data": {
-      "diagnostics": [
-        {
-          "code": "invalid_parameter",
-          "path": "params.arguments.volume_mL",
-          "message": "volume_mL 超出操作声明范围"
-        }
-      ]
-    }
-  }
-}
-```
+| `object` | 返回容器当前可确认状态、变化与修订号；无变化也必须明确表达 |
+| `control` | 返回操作标识、受理或完成状态、实际参数和诊断 |
+| `system` | 返回设备状态、安全检查、任务、注意事项和观测时间 |
 
 ## 修订号与单位
 
-- FSP 设备定义、中间程序、对象状态和系统状态必须携带修订号；
-- 改变状态的请求应携带预期系统修订号；冲突时不得继续执行；
+- 对象状态和系统状态必须带有修订号；
+- 改变状态的操作必须带入预期修订号；冲突时不得继续执行；
 - 时间使用 RFC 3339；
-- 数值和单位分字段表达，或使用设备定义中固定的明确单位；
+- 数值和单位必须明确表达；
 - 未知值使用 `null`，不得用 `0` 或空字符串冒充。
+
+## 错误语义
+
+输入不能解析、缺少必填字段或字段类型错误时，承载协议可以使用自身错误格式返回结构化诊断。设备已经受理操作后的失败必须使用三段操作输出，返回实际对象状态、控制诊断和系统事实。

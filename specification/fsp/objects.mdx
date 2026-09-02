@@ -1,39 +1,23 @@
 ---
 title: "对象"
-description: "FSP 可识别实验器皿、研究对象、物理属性和当前状态"
+description: "FSP 操作中的容器类型、物理属性和状态"
 ---
 
-## 范围
+FSP 中的对象是设备能够识别、处理或观测的容器。容器定义必须给出可用于接口校验的物理属性和状态，不能只给出内部业务名称。
 
-FSP 的对象维度说明某项操作能够识别或处理的实验器皿，以及调用该操作时器皿必须满足的状态。目录只收录具有明确器皿或样品盛放语义的对象。
-
-离心管、反应管、西林瓶、烧杯、坩埚、比色皿和多孔板均为容器；XRD 基底片、玻片、光刻片、玻碳片和质谱板等直接盛放或处理样品的平面器皿也登记为容器。
-
-## 容器类型定义
+## 容器定义
 
 ```json
 {
-  "object_type_id": "container.vial",
-  "variant_id": "vial.flat_top.7_5mm",
-  "name": "平口西林瓶",
+  "object_type_id": "container.centrifuge_tube",
+  "name": "离心管",
   "properties": {
-    "geometry": {
-      "shape": "cylindrical",
-      "height_mm": 75,
-      "body_outer_diameter_mm": 22.4,
-      "mouth_outer_diameter_mm": 19.6
-    },
-    "material": {
-      "primary": "glass"
-    },
-    "capacity": {
-      "nominal_volume_mL": null,
-      "max_working_volume_mL": null
-    },
-    "closure": {
-      "supported": true,
-      "type": "flat_top_cap"
-    }
+    "shape": "cylindrical",
+    "diameter_mm": 30,
+    "height_mm": 115,
+    "material": "polypropylene",
+    "nominal_volume_mL": 50,
+    "max_working_volume_mL": 45
   },
   "states": {
     "container_status": ["有盖", "无盖"],
@@ -42,251 +26,68 @@ FSP 的对象维度说明某项操作能够识别或处理的实验器皿，以�
 }
 ```
 
-容器定义作为 FSP 设备定义的 `object` 维度提供。多项操作可以使用相同容器类型，但每项操作仍须明确声明自身允许的容器变体和状态。
-
-该非规范性示例只填写已知的外形、尺寸和材质；未确认的容积保持 `null`。真实值必须由 FSP 设备或经确认的器皿资料提供，不能由转换程序补猜。
-
-### 必需属性
-
 | 字段 | 说明 |
 | --- | --- |
-| `object_type_id` | 稳定的对象类型标识；同一物理类别的变体共享该标识 |
-| `variant_id` | 稳定的物理变体标识；尺寸、材质或口部结构不同则必须不同 |
-| `name` | 面向人的名称 |
-| `properties.geometry` | 形状、长宽高、厚度、内外径、口径、圆角和其他可测几何量 |
-| `properties.material` | 主材质及必要时的复合材质说明 |
-| `properties.capacity` | 标称容积和允许工作容积，单位为 `mL` |
-| `properties.layout` | 孔数、孔径等多孔容器的布局属性 |
-| `properties.closure` | 是否支持盖体及盖体类型 |
-| `states` | 设备可观察或修改的状态字段和允许值 |
+| `object_type_id` | 容器的稳定类型标识 |
+| `shape`、`diameter_mm`、`height_mm` | 形状和尺寸，用于装夹、定位及兼容性判断 |
+| `material` | 主材质，用于工艺和耐受性判断 |
+| `nominal_volume_mL`、`max_working_volume_mL` | 标称容积与最大工作容积 |
+| `container_status` | 容器开闭等设备可确认状态 |
+| `sample_status` | 容器中样品的设备可确认状态 |
 
-圆形和圆柱形容器应当描述直径；非圆形容器使用适用的长度、宽度和高度。可盛装样品或试剂的容器应当声明 `nominal_volume_mL`；设备允许加注、抽取或处理的上限应当另行声明 `max_working_volume_mL`。不可得数值使用 `null`，并在 `metadata.attribute_status` 中标为 `unmeasured` 或 `unknown`，不得猜测。
+## 操作请求中的对象
 
-## 容器类型目录
-
-本目录是面向协议阅读者的通用器皿分类。设备实现只声明实际支持的类型与变体；同名器皿在尺寸、材质、口部、孔位或容积不同的情况下，必须以独立 `variant_id` 声明。
-
-FSP 不硬编码多孔板的外形和孔位数值；设备必须在其类型定义中声明实际采用的孔位布局、外形尺寸和版本信息。
-
-| 对象类别 | 容器名称 | 典型变体或物理记录要求 |
-| --- | --- | --- |
-| 管类容器 | 离心管 | 15 mL 锥形、50 mL 锥形或圆柱变体；记录容积、高度、外径、材质和盖体 |
-| 管类容器 | 反应管、耐压反应管、试管 | 记录容积、长度、直径、耐压或耐温限制和材质 |
-| 管类容器 | 核磁管 | 记录长度、外径、壁厚、材质和是否带盖 |
-| 瓶类容器 | 西林瓶、色谱瓶、样品瓶 | 平口、螺口、圆底等变体；记录瓶身/瓶口尺寸、容积、材质和封口类型 |
-| 瓶类容器 | 试剂瓶、粉末瓶、耐热瓶、耐压瓶、浓缩瓶 | 记录容积、口径、瓶身尺寸、材质、密封和耐压/耐温限制 |
-| 开口容器 | 烧杯 | 记录标称容积、口径、高度、材质和刻度精度（如适用） |
-| 多孔容器 | 24 孔板、96 孔板及其他微孔板 | 记录孔数、孔位布局、孔径、单孔工作容积、外形尺寸、底部类型和适用版本 |
-| 高温或反应容器 | 坩埚、管式炉坩埚、高压釜 | 记录内外尺寸、容积（如适用）、材质、最高温度和压力限制 |
-| 离心容器 | 液体料斗、固体离心料斗 | 记录入口、出口、容积或可容纳量、长宽高和适用物料形态 |
-| 光学容器 | 比色皿 | 3 mL、5 mL 等变体；记录内腔尺寸、光程、容积和材质 |
-| 平面容器 | XRD 基底片、红外基底片、玻片、光刻片、玻碳片、质谱板 | 记录平面形状、长宽或直径、厚度、材质和样品放置区域 |
-
-## 运行时状态
-
-`fsp/read` 读取容器当前状态：
+每个操作请求必须包含目标容器和其执行前状态：
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "read-object-1",
-  "method": "fsp/read",
-  "params": {
-    "device_id": "2002186824385539",
-    "operation_id": "read_container_state",
-    "arguments": {
-      "container_ids": [1, 2]
-    }
+  "object": {
+    "containers": [
+      {
+        "container_id": "container-01",
+        "object_type_id": "container.centrifuge_tube",
+        "before_state": {
+          "container_status": "无盖",
+          "sample_status": "空",
+          "sample_volume_mL": 0
+        },
+        "capacity": {
+          "max_working_volume_mL": 45,
+          "remaining_volume_mL": 45
+        }
+      }
+    ]
   }
 }
 ```
 
-`fsp/read` 只是读取类请求入口；`read_container_state` 是 FSP 设备定义中声明的具体读取操作。其参数和返回字段必须符合该操作的输入与输出 Schema。
+设备或适配层必须校验容器存在、类型兼容、实际状态与请求状态一致，且容量满足操作要求。状态未知时必须返回诊断，不得以推测值继续执行。
 
-| 输出字段 | 类型 | 作用 |
-| --- | --- | --- |
-| `container_type` | `string` | 表示本次返回的容器类型 |
-| `container_count` | `integer` | 表示该类型容器总数 |
-| `container_ids[]` | `array[integer|string]` | 表示本次返回的容器实例 |
-| `containers[]` | `array[object]` | 保存每个容器的编号、容器状态、样品状态和体积 |
-| `revision` | `string` | 用于后续状态改变请求的并发检查 |
-| `diagnostics[]` | `array[object]` | 保存读取诊断 |
+## 操作响应中的对象
 
-返回值沿用 FSP 操作定义中声明的字段：
+响应必须报告实际对象变化：
 
 ```json
 {
-  "result_type": "complete",
-  "value": {
-    "container_type": "离心瓶",
-    "container_count": 2,
-    "container_ids": [1, 2],
-    "containers": [
+  "object": {
+    "changes": [
       {
-        "container_id": 1,
-        "container_status": "无盖",
-        "sample_status": "液体",
-        "sample_volume": 0.5
-      },
-      {
-        "container_id": 2,
-        "container_status": "无盖",
-        "sample_status": "液体",
-        "sample_volume": 0.5
+        "container_id": "container-01",
+        "before_state": {
+          "container_status": "无盖",
+          "sample_status": "空",
+          "sample_volume_mL": 0
+        },
+        "after_state": {
+          "container_status": "无盖",
+          "sample_status": "液体",
+          "sample_volume_mL": 0.5
+        },
+        "revision": "object-22"
       }
-    ],
-    "revision": "7"
-  },
-  "diagnostics": []
+    ]
+  }
 }
 ```
 
-## 状态规则
-
-- 设备只能返回 FSP 设备定义中已经声明的状态字段；
-- 状态读取必须包含观测时间或修订号；
-- 操作产生的状态变化必须与操作定义声明的 `effects` 一致；
-- 强制条件失败时不得提交预期新状态；
-- 设备实际状态未知时必须明确返回诊断，不能假定操作成功。
-
-## 研究对象与状态
-
-研究对象（Research Object）是实验过程中被处理、观察或表征的科学对象。它将容器与样品状态、科学身份、证据和来源组合为一个可追溯上下文：
-
-```text
-identity
-sample
-container
-state
-location
-evidence
-provenance
-extensions
-```
-
-FSP 负责设备可见的容器和状态；ALL 语言引擎使用同一结构生成、仿真和执行中间程序。
-
-### 顶层结构
-
-| 字段 | 类型 | 是否必需 | 说明 |
-| --- | --- | --- | --- |
-| `identity` | `object` | 是 | 研究对象稳定标识、类型和名称 |
-| `sample` | `object` | 是 | 样品状态和可量化信息 |
-| `container` | `object` | 是 | 当前容器及其静态、动态属性 |
-| `state` | `object` | 是 | 当前修订号和设备可确认状态 |
-| `location` | `object` 或 `null` | 是 | 当前所在设备或外部位置；未知时为 `null` |
-| `evidence` | `array[object]` | 是 | 支持当前状态的仿真、观测、测量或执行结果引用 |
-| `provenance` | `array[object]` | 是 | 对象创建、状态提交和更正记录 |
-| `extensions` | `object` | 是 | 命名空间隔离的扩展字段 |
-
-### 完整结构示例
-
-```json
-{
-  "identity": {
-    "object_id": "sample-1",
-    "object_type": "experimental_sample",
-    "name": "试剂A样品"
-  },
-  "sample": {
-    "sample_status": "液体",
-    "sample_volume": 0.5,
-    "volume_unit": "mL",
-    "source_bottle_ids": [1]
-  },
-  "container": {
-    "container_id": 1,
-    "container_type": "离心瓶",
-    "container_status": "无盖",
-    "shape": null,
-    "diameter_mm": null,
-    "height_mm": null,
-    "material": null
-  },
-  "state": {
-    "revision": "8",
-    "observed_at": "2026-09-01T12:00:12Z"
-  },
-  "location": {
-    "device_id": "2002186824385539"
-  },
-  "evidence": [
-    {
-      "evidence_type": "execution_result",
-      "result_ref": "exec-a01-001/step-2",
-      "created_at": "2026-09-01T12:00:12Z"
-    }
-  ],
-  "provenance": [
-    {
-      "change_type": "state_commit",
-      "operation_ref": "add_liquid_with_material",
-      "created_at": "2026-09-01T12:00:12Z",
-      "committed_by": "ALL 执行服务"
-    }
-  ],
-  "extensions": {}
-}
-```
-
-该示例表示：研究对象当前位于指定设备的 1 号离心瓶内；加液结果把样品状态更新为液体并提交修订号 `8`；证据和来源分别记录结果位置与状态提交原因。未知的容器静态属性保持 `null`。
-
-### 分区字段
-
-| 分区 | 必需内容 |
-| --- | --- |
-| `identity` | `object_id`、对象类型和面向人的名称 |
-| `sample` | 样品状态、体积、单位和来源容器列表 |
-| `container` | 容器实例、类型、状态、形状、尺寸和材质 |
-| `state` | `revision`、设备返回的当前状态字段和观测时间 |
-| `location` | 当前设备标识；没有可信位置时使用 `null` |
-| `evidence[]` | 证据类型、结果引用和产生时间；不能嵌入访问凭据 |
-| `provenance[]` | 变更类型、相关操作或方法引用、时间和提交主体 |
-| `extensions` | 以实现者控制的命名空间组织，不能覆盖标准字段 |
-
-未知事实必须使用 `null` 或空数组，不能用推测值填充。
-
-### 状态交换字段
-
-FSP、对象状态和 ALL 中间程序之间通过以下公共字段传递状态：
-
-```text
-container_type
-container_count
-container_ids
-container_status
-sample_status
-sample_volume
-source_bottle_ids
-```
-
-编译、仿真和执行必须沿用这些字段，不替换成没有实现依据的新标识体系。
-
-### 初始状态与变化
-
-开盖能力的初始状态示例：
-
-```yaml
-container_type: 离心瓶
-container_count: 2
-container_ids: [1, 2]
-container_status: 有盖
-sample_status: 空
-```
-
-```text
-开盖：container_status 有盖 → 无盖
-加液：container_status 无盖 → 无盖；sample_status 空 → 液体
-关盖：container_status 无盖 → 有盖；sample_status 液体 → 液体
-```
-
-### 编译状态上下文
-
-编译/解释器获得的上下文至少包含科学目标、对象身份、容器类型和编号、当前容器与样品状态、已有样品体积、FSP 设备定义、强制约束以及已有证据和来源。
-
-### 状态提交
-
-- 只有操作完成并满足完成条件后才能提交新状态；
-- 仿真失败、版本不兼容或强制约束失败时不提交状态；
-- 设备结果未知时重新读取状态，不假定成功；
-- 每次状态提交都应当关联产生它的操作、参数和证据。
+只有设备确认操作完成后才可出现 `after_state`。失败、取消或结果未知时，响应必须返回当前可确认状态或明确标记未知。

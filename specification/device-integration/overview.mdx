@@ -1,84 +1,96 @@
 ---
 title: "接口定义"
-description: "设备被动接收 FSP 请求所需的接口事实"
+description: "设备被动接收 FSP 操作的对象、控制与系统契约"
 ---
 
-## 接口目标
-
-设备通过既有 API、SDK、RPC 或驱动被动接收调用。适配层把这些接口整理为 FSP 设备定义，并把 FSP 请求转换为设备实际调用。
+设备保留既有 HTTP API、CLI、MCP 工具、SDK、RPC 或驱动；适配层将其接口描述和输入输出映射为 FSP 契约。设备不负责解释实验目标，只被动执行已经确定的操作并返回实际事实。
 
 ```text
-FSP 请求
+FSP 三段请求
   → 适配层映射
-  → 设备接口被动执行
-  → 返回实际状态、结果或诊断
+  → 设备接口执行
+  → 三段响应
 ```
 
-设备不需要提供发现接口，也不负责生成实验程序。
+## 接口要求
 
-## 三个说明维度
+每个设备接口必须同时表达：
 
-一项设备接口必须从三个维度说明完整事实：
-
-| 维度 | 内容 |
-| --- | --- |
-| 操作 | 接口标识、用途、请求分类、参数、范围、枚举、前置条件、返回值和诊断 |
-| 对象 | 适用容器的类型、形状、尺寸、材质、容积和允许状态 |
-| 系统 | 设备可用状态、安全围栏、同步或异步模式以及结果验证 |
-
-三个维度不是三条独立接口。一个加液 API 可以同时声明目标容器、加液参数、设备状态和异步执行方式。
-
-## 加液接口示例
-
-以下 HTTP 接口仅说明设备侧被动接口如何提供三方面事实：
-
-```text
-POST /operations/dispense
-```
-
-```json
-{
-  "request_id": "req-001",
-  "target": {
-    "container_id": "container-01",
-    "container_type": "离心管",
-    "expected_state": {"container_status": "无盖"}
-  },
-  "parameters": {
-    "source_container_id": "source-01",
-    "volume_mL": 0.5
-  },
-  "expected_device_state": "idle",
-  "execution_mode": "async"
-}
-```
-
-| 内容 | 维度 | 设备处理 |
+| 部分 | 请求要求 | 响应要求 |
 | --- | --- | --- |
-| `target` | 对象 | 确认容器存在、类型匹配、容量足够且状态为无盖 |
-| `parameters` | 操作 | 校验来源、体积类型与范围并执行加液 |
-| `expected_device_state`、`execution_mode` | 系统 | 检查设备空闲和安全围栏；需要时创建系统异步任务 |
+| 对象 | 目标容器、类型、执行前容器状态、样品状态和容量 | 容器实际状态变化、样品变化和对象修订号 |
+| 控制 | 操作标识、参数、类型、范围、枚举和操作前置条件 | 是否受理、执行状态、实际参数、结果和诊断 |
+| 系统 | 设备预期状态、系统修订号、安全围栏、执行模式 | 当前设备状态、安全检查、任务信息和注意事项 |
+
+## 被动加液接口示例
+
+以下为传输无关的接口结构，不定义 URL、命令名或工具名。实现可将其放入 HTTP 请求体、CLI 输入文件、MCP 工具输入或 SDK 参数对象。
+
+### 请求
 
 ```json
 {
-  "result_type": "task",
-  "task": {
-    "task_id": "task-001",
-    "status": "queued",
-    "cancellable": true
+  "operation_id": "add_liquid",
+  "object": {
+    "containers": [
+      {
+        "container_id": "container-01",
+        "object_type_id": "container.centrifuge_tube",
+        "before_state": {"container_status": "无盖", "sample_status": "空", "sample_volume_mL": 0},
+        "capacity": {"remaining_volume_mL": 45}
+      }
+    ]
   },
-  "diagnostics": []
+  "control": {
+    "parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
+    "preconditions": ["加液体积必须位于声明范围", "容器处于无盖状态"]
+  },
+  "system": {
+    "expected_device_state": "idle",
+    "expected_system_revision": "system-21",
+    "execution_mode": "async",
+    "preconditions": ["设备无故障", "无冲突任务"],
+    "safety_fences": ["容器容量足够", "供液容器可用"]
+  }
 }
 ```
 
-任务完成后必须返回实际加液量、容器状态和诊断；不能把计划值当作执行结果。
+### 响应
+
+```json
+{
+  "object": {
+    "changes": [
+      {
+        "container_id": "container-01",
+        "before_state": {"container_status": "无盖", "sample_status": "空", "sample_volume_mL": 0},
+        "after_state": null,
+        "revision": "object-21"
+      }
+    ]
+  },
+  "control": {
+    "operation_id": "add_liquid",
+    "status": "accepted",
+    "actual_parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
+    "diagnostics": []
+  },
+  "system": {
+    "device_state": "busy",
+    "system_revision": "system-22",
+    "safety_checks": [{"rule": "容器容量足够", "passed": true}],
+    "task": {"task_id": "task-001", "status": "queued", "cancellable": true},
+    "notices": ["任务完成前不得移动目标容器"]
+  }
+}
+```
+
+`after_state` 仅在设备完成并确认操作后填写实际值。任务完成、失败或取消后，设备必须返回相同三段结构，说明容器当前状态、控制执行情况和系统状态。
 
 ## 最低要求
 
-设备侧接口或映射层必须：
-
-1. 为每项操作提供可映射的参数、对象和系统事实；
-2. 被动响应 FSP 的读取、写入、调用和系统任务控制；
-3. 在写入和物理动作前执行参数、状态与安全检查；
-4. 返回实际结果或任务句柄；
-5. 失败时保留可确认状态并返回结构化诊断。
+1. 设备接口或适配层必须校验对象、控制和系统前置条件；
+2. 安全围栏检查必须在设备动作前完成；
+3. 响应必须包含真实对象状态、实际操作状态和当前系统事实；
+4. 不得用计划值、缓存猜测或自然语言推断代替设备结果；
+5. 异步操作必须通过系统任务返回进度、结果和注意事项；任务查询和取消的具体接口由承载方式决定。

@@ -1,21 +1,9 @@
 ---
 title: "编译/解释器"
-description: "把设备接口定义和实验意图转换为类型化、可验证的中间程序"
+description: "把设备接口定义和实验意图转换为类型化中间程序"
 ---
 
-## 职责
-
-编译/解释器是 ALL 语言引擎的入口。它读取科学目标与 FSP 设备定义，将设备的操作、对象和系统信息转换为类型化函数，再把实验意图解释为候选中间程序。该模块只生成程序，不直接调用物理设备。
-
-```text
-科学目标 + 初始对象状态 + FSP 设备定义
-  → 接口规范化
-  → 类型与约束检查
-  → 函数定义生成
-  → 候选中间程序
-```
-
-FSP 设备定义在设备接入时由适配层或部署配置提供。编译/解释器不根据设备名称猜测操作。
+编译/解释器读取科学目标、对象初始状态和 FSP 设备定义，将设备操作转换为类型化函数，并生成候选中间程序。它不直接调用物理设备。
 
 ## 输入
 
@@ -27,94 +15,54 @@ FSP 设备定义在设备接入时由适配层或部署配置提供。编译/解
   },
   "initial_objects": [
     {
-      "object_id": "container-01",
-      "object_type": "container.centrifuge_tube",
+      "container_id": "container-01",
+      "object_type_id": "container.centrifuge_tube",
       "container_status": "无盖",
-      "sample_status": "空",
-      "available_volume_mL": 50
+      "sample_status": "空"
     }
   ],
   "fsp_definitions": [
     {
       "device_id": "device-01",
       "revision": "12",
-      "operations": [
-        {
-          "operation_id": "add_liquid",
-          "request_class": "invoke",
-          "execution_mode": "async",
-          "input_schema": {
-            "type": "object",
-            "required": ["container_id", "volume_mL"],
-            "properties": {
-              "container_id": {"type": "string"},
-              "volume_mL": {"type": "number", "minimum": 0.05, "maximum": 0.8}
-            }
-          },
-          "output_schema": {
-            "type": "object",
-            "required": ["actual_volume_mL", "container_status"]
-          }
-        }
-      ],
+      "operations": ["add_liquid"],
       "objects": ["container.centrifuge_tube"],
-      "system": {
-        "required_states": ["idle"],
-        "forbidden_states": ["fault", "maintenance"]
-      }
+      "system_states": ["idle", "busy", "fault"]
     }
   ]
 }
 ```
 
-| 输入 | 作用 |
-| --- | --- |
-| `goal` | 给出目标与可判定的完成条件 |
-| `initial_objects[]` | 固定容器、样品及其当前状态 |
-| `fsp_definitions[]` | 给出可用操作及对象、系统约束 |
-| `revision` | 固定本次编译使用的设备定义版本 |
+## 处理过程
 
-## 编译过程
-
-1. 校验每项操作是否同时具备稳定标识、请求分类、参数 Schema、返回 Schema、对象约束和系统约束。
-2. 将参数类型、范围、枚举、必填关系和状态变化编译为类型化函数契约。
-3. 根据科学目标选择函数；选择只依据明示定义，不依据相似名称或自然语言猜测。
-4. 把函数调用组织为带依赖关系的中间程序，并记录设备定义修订号。
-5. 对无法解析的参数、缺失操作和约束冲突返回诊断，不产生可执行输出。
+1. 校验操作是否完整定义对象要求、参数 Schema、执行前置条件、系统围栏和响应结构；
+2. 校验实验目标所需容器与操作兼容；
+3. 将参数类型、范围、枚举和状态变化编译为类型化函数契约；
+4. 组织带依赖关系的候选中间程序；
+5. 固定设备定义、对象状态和系统状态修订号。
 
 ## 输出
 
 ```json
 {
   "program_id": "program-001",
-  "language_version": "2026-09-02",
   "status": "compiled",
-  "definition_revisions": {
-    "device-01": "12"
-  },
-  "objects": [
-    {
-      "object_id": "container-01",
-      "expected_initial_state": {
-        "container_status": "无盖",
-        "sample_status": "空"
-      }
-    }
-  ],
+  "definition_revisions": {"device-01": "12"},
   "steps": [
     {
       "step_id": "step-1",
       "device_id": "device-01",
       "operation_id": "add_liquid",
-      "request_class": "invoke",
-      "arguments": {
+      "object": {
         "container_id": "container-01",
-        "volume_mL": 0.5
+        "expected_container_status": "无盖"
       },
-      "depends_on": [],
-      "expected_result": {
-        "actual_volume_mL": 0.5,
-        "container_status": "无盖"
+      "control": {
+        "parameters": {"source_container_id": "source-01", "volume_mL": 0.5}
+      },
+      "system": {
+        "expected_device_state": "idle",
+        "execution_mode": "async"
       }
     }
   ],
@@ -122,11 +70,4 @@ FSP 设备定义在设备接入时由适配层或部署配置提供。编译/解
 }
 ```
 
-输出中的 `steps[]` 是仿真器和执行器共同使用的中间表示。`compiled` 仅表示结构和静态约束通过，不表示实验已经通过仿真或可以执行。
-
-## 强制规则
-
-- 编译/解释器必须拒绝未在 FSP 设备定义中声明的操作和参数。
-- `read`、`write`、`invoke` 是风险分类，不能替代具体 `operation_id`。
-- 修订号变化后，依赖该定义的中间程序必须重新编译并重新仿真。
-- 编译阶段不得产生设备动作、提交对象状态或伪造执行结果。
+编译/解释器必须拒绝未在 FSP 定义中声明的操作或参数。`compiled` 只表示结构通过，不表示已仿真或已执行。

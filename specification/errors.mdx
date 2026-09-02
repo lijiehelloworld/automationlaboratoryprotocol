@@ -1,90 +1,50 @@
 ---
 title: "错误与诊断"
-description: "协议错误、执行失败和恢复语义"
+description: "对象、控制和系统条件的结构化错误语义"
 ---
 
-## 两类失败
+FSP 规定诊断应当能够说明失败发生在对象、控制或系统哪个维度；不规定承载方式采用何种错误封装。
 
-| 类型 | 返回位置 | 说明 |
-| --- | --- | --- |
-| 协议错误 | JSON-RPC `error` | 请求尚未进入设备执行，例如消息、方法或参数错误 |
-| 执行失败 | 普通 `result` 或任务结果 | 设备操作已经受理或开始，必须保留实际状态与诊断 |
-
-## 协议错误示例
+## 诊断结构
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "req-17",
-  "error": {
-    "code": -32602,
-    "message": "参数无效",
-    "data": {
-      "diagnostics": [
-        {
-          "code": "parameter_out_of_range",
-          "path": "params.arguments.volume",
-          "message": "参数值超出能力描述声明的范围"
-        }
-      ]
-    }
-  }
+  "code": "object_state_conflict",
+  "message": "目标容器实际为有盖状态",
+  "dimension": "object",
+  "path": "object.containers[0].before_state.container_status",
+  "retryable": false,
+  "details": {"expected": "无盖", "actual": "有盖"}
 }
 ```
 
-## 执行失败示例
-
-```json
-{
-  "result_type": "complete",
-  "value": {
-    "status": "failed",
-    "state_committed": false
-  },
-  "diagnostics": [
-    {
-      "code": "precondition_failed",
-      "message": "操作前置状态不满足",
-      "retryable": true
-    }
-  ]
-}
-```
-
-## 标准诊断结构
-
-| 字段 | 类型 | 是否必需 | 说明 |
-| --- | --- | --- | --- |
-| `code` | `string` | 是 | 稳定、可机器判断的诊断编码 |
-| `message` | `string` | 是 | 面向调用方的中文说明 |
-| `path` | `string` | 否 | 出错字段或状态路径 |
-| `retryable` | `boolean` | 否 | 在不改变请求语义时是否可重试 |
-| `details` | `object` | 否 | 不含秘密和内部堆栈的补充信息 |
-
-## 标准编码
-
-| 编码 | 适用情况 |
+| 字段 | 说明 |
 | --- | --- |
-| `unsupported_version` | 协议版本不支持 |
-| `device_not_found` | 目标设备不存在 |
-| `operation_not_found` | FSP 设备定义中不存在目标操作，或该操作缺少对象、操作、系统任一维度 |
-| `invalid_parameter` | 参数类型、单位或结构错误 |
-| `parameter_out_of_range` | 参数超出范围或枚举 |
-| `precondition_failed` | 操作前置状态不满足 |
-| `constraint_violation` | 操作约束或安全围栏不满足 |
-| `revision_conflict` | `expected_revision` 已过期 |
-| `stale_state` | 状态已过期，必须重新读取 |
-| `device_busy` | 设备当前不能接收新操作 |
-| `execution_failed` | 设备确认操作失败 |
-| `result_unknown` | 无法确认最终结果，不得假定成功 |
-| `unsafe_cancellation` | 当前阶段不能安全取消 |
-| `task_not_found` | 异步任务不存在 |
-| `task_result_expired` | 任务结果已超过保留期 |
-| `rate_limited` | 请求频率超过服务限制 |
+| `code` | 稳定的机器可读错误码 |
+| `message` | 面向调用方的简明说明 |
+| `dimension` | `object`、`control` 或 `system` |
+| `path` | 出错字段或规则所在位置 |
+| `retryable` | 修正状态或参数后是否可重试 |
+| `details` | 与诊断有关的已脱敏事实 |
 
-## 恢复规则
+## 推荐错误码
 
-- `revision_conflict`、`stale_state` 和 `result_unknown` 出现后，调用方必须重新读取相关对象与设备状态；
-- `retryable=false` 时不得原样自动重试；
-- 操作已经开始时，网络超时不得被解释为失败或成功；
-- 服务端不得在错误消息中返回设备秘密、内部堆栈或其他资源信息。
+| 错误码 | 维度 | 含义 |
+| --- | --- | --- |
+| `invalid_operation` | control | 操作未定义或当前设备不支持 |
+| `invalid_parameter` | control | 参数缺失、类型错误或结构不合法 |
+| `parameter_out_of_range` | control | 参数超出声明范围或不在枚举中 |
+| `object_not_found` | object | 目标容器不可确认或不存在 |
+| `object_state_conflict` | object | 实际容器状态不满足执行前条件 |
+| `capacity_insufficient` | object | 容器剩余容量或样品量不满足要求 |
+| `system_state_conflict` | system | 设备实际状态与预期状态不一致 |
+| `revision_conflict` | system | 对象或系统修订号已变化 |
+| `safety_fence_failed` | system | 安全围栏、资源锁或设备保护未通过 |
+| `execution_failed` | control | 操作已开始但未完成 |
+| `result_unknown` | system | 无法确认设备是否完成或对象是否变化 |
+| `task_not_found` | system | 异步任务标识无法确认 |
+| `unsafe_cancellation` | system | 当前阶段不允许取消操作 |
+
+## 返回规则
+
+输入在动作前被拒绝时，承载协议可使用自身错误格式返回上述诊断。设备已经受理操作后，无论成功、失败、取消或结果未知，都必须返回对象、控制和系统三段事实；诊断放在 `control.diagnostics` 或与其等价的位置。
