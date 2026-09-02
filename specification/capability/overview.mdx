@@ -1,16 +1,16 @@
 ---
 title: "设备能力"
-description: "从 FSP 能力数据生成设备技能描述并进入质量评估"
+description: "从 FSP 完整技能定义生成可评估的设备技能描述"
 ---
 
 ## 模块作用
 
-技能提取把 FSP 的对象、操作和系统数据转换为设备技能描述，经过质量评估后进入合格设备技能库。
+技能提取把 FSP 的完整技能定义转换为设备技能描述，经过质量评估后进入合格设备技能库。每项技能均以对象、控制和系统三个维度形成一个完整契约。
 
 ![技能提取到执行闭环](/images/skill-method-lifecycle.svg)
 
 ```text
-FSP 能力数据集
+FSP 完整技能定义
   → 设备技能描述
   → 技能质量评估
   → 合格设备技能库
@@ -20,21 +20,23 @@ FSP 能力数据集
 
 ## 输入
 
-输入是 `fsp/get_capabilities` 返回的数据：
+输入是 `fsp/get_capabilities(detail_level="full")` 返回的数据。摘要结果只用于检索，不能用于技能提取：
 
 ```text
 device
 revision
-objects[]
-operations[]
-system
+detail_level: full
+skills[]
+  ├── object
+  ├── control
+  └── system
 ```
 
 转换时需要保留来源设备和修订号，确保说明可以重新生成和判定过期。
 
 ### 输入示例
 
-以下输入包含一个容器类型、一条加液操作和工作站系统约束；数组可以包含更多同类记录：
+以下输入包含一条加液技能及其三个说明维度；`skills` 可以包含更多技能：
 
 ```json
 {
@@ -44,59 +46,65 @@ system
     "description": "支持容器开盖、加液和关盖操作"
   },
   "revision": "12",
-  "objects": [
-    {
-      "object_type_id": "container.sample_vial",
-      "name": "进样瓶",
-      "states": {
-        "container_status": ["有盖", "无盖"],
-        "sample_status": ["空", "液体", "固体", "固液混合物"]
-      }
-    }
-  ],
-  "operations": [
+  "detail_level": "full",
+  "skills": [
     {
       "command_id": "add_liquid_with_material",
-      "command_class": "invoke",
+      "request_class": "invoke",
       "name": "加液_物料绑定",
-      "initial_state": {"container_status": ["无盖"]},
-      "parameters": [
-        {"name": "container_ids", "type": "array[int]", "required": true},
-        {"name": "dispensing_plan", "type": "array[object]", "required": true}
-      ],
-      "effects": {"sample_status": {"空": "液体"}},
-      "returns": [{"name": "containers", "type": "array[object]"}]
+      "execution_mode": "async",
+      "object": {
+        "container_types": [
+          {
+            "container_type_id": "container.sample_vial",
+            "name": "离心瓶",
+            "required_states": {"container_status": ["无盖"]}
+          }
+        ]
+      },
+      "control": {
+        "parameters": [
+          {"name": "container_ids", "type": "array[int]", "required": true},
+          {"name": "dispensing_plan", "type": "array[object]", "required": true}
+        ],
+        "constraints": ["container_status == '无盖'"],
+        "effects": {"sample_status": {"空": "液体"}},
+        "returns": [{"name": "containers", "type": "array[object]"}]
+      },
+      "system": {
+        "required_device_states": ["idle"],
+        "safety_fences": ["容器剩余容量必须满足本次加液"],
+        "result_verification": ["返回实际加液结果和执行后容器状态"]
+      }
     }
-  ],
-  "system": {
-    "availability_states": ["idle", "busy", "fault"],
-    "safety_fences": ["容器内液体体积不得超过30mL"]
-  }
+  ]
 }
 ```
 
 | 输入字段 | 作用 |
 | --- | --- |
-| `device` | 确定能力属于哪个工作站，并提供名称和总体说明 |
+| `device` | 确定能力属于哪个设备，并提供名称和总体说明 |
 | `revision` | 固定本次转换使用的能力版本，判断派生产物是否过期 |
-| `objects[]` | 提供可处理容器、静态属性和允许状态 |
-| `operations[]` | 提供具体指令、参数、前置状态、状态变化和返回值 |
-| `system` | 提供工作站总体状态、可用性和安全围栏 |
+| `detail_level` | 必须为 `full`，防止把摘要误当作可执行契约 |
+| `skills[]` | 提供具体技能及其请求分类、执行模式和三个说明维度 |
+| `skills[].object` | 提供该技能可处理的容器、静态属性和允许状态 |
+| `skills[].control` | 提供参数、前置条件、状态变化、返回值和 Schema |
+| `skills[].system` | 提供该技能所需设备状态、安全围栏和结果验证规则 |
 
 ## 提取实现逻辑
 
-技能提取不是让模型重新设计设备能力，而是把 FSP 能力数据转换为可阅读、可检查、可生成函数调用的说明。实现按以下顺序处理：
+技能提取不是让模型重新设计设备技能，而是把 FSP 完整技能定义转换为可阅读、可检查、可生成函数调用的说明。实现按以下顺序处理：
 
-1. 读取一个固定 `device_id` 和 `revision` 的能力数据快照；
-2. 逐项解析对象、控制和系统字段，保留原始 `object_type_id`、`command_id`、参数路径、枚举、单位和安全围栏；
-3. 将每条控制操作展开为“前置状态 → 参数 → 约束 → 状态变化 → 返回值”的完整契约；
+1. 读取一个固定 `device_id` 和 `revision` 的完整技能快照；
+2. 逐项解析每条技能的对象、控制和系统维度，保留原始容器类型、`command_id`、请求分类、参数路径、枚举、单位和安全围栏；
+3. 将每条技能展开为“适用对象 → 前置状态 → 参数 → 约束 → 状态变化 → 返回值 → 结果验证”的完整契约；
 4. 对缺失字段生成待修订项，不用自然语言或模型推测补值；
 5. 输出设备技能描述，并写入来源修订号和字段映射，使后续评估、函数定义和方法都能追溯到同一能力快照。
 
 ```text
-FSP 快照
+FSP 完整技能快照
   → 逐字段解析
-  → 操作契约展开
+  → 三维技能契约展开
   → 缺失项检查
   → 带来源修订号的设备技能描述
 ```
@@ -109,18 +117,24 @@ FSP 快照
 
 ```markdown
 ---
-工作站编码: 2002186824385539
+设备编码: 2002186824385539
 name: Liquid_Handling_Station_1ml_V2
 description: 支持容器开盖、加液、关盖操作。最多可添加16种不同溶液，移液枪单次最大移液量1mL，单种溶液总加注量不超过3mL。严格执行一瓶一液原则，单只原液瓶仅盛放一种溶液，全程保持原液瓶编号顺序固定不变。
 module: Synthesis
 ---
 
-# 工作站中文名：移液平台_1ml_V2
+# 设备中文名：移液平台_1ml_V2
 
-## 操作 1. 开盖
+## 技能 1. 开盖
+
+- 请求分类：invoke
+
+### Object（对象）
+- 容器类型：离心瓶、50ml耐热瓶
+- 容器状态：有盖
 
 ### Initial State（初始状态）
-- 容器类型 (container_type): 进样瓶、50ml耐热瓶
+- 容器类型 (container_type): 离心瓶、50ml耐热瓶
 - 容器状态 (container_status): 有盖
 - 样品状态 (sample_status): 空、液体、固体、固液混合物
 
@@ -135,6 +149,9 @@ module: Synthesis
 
 ### Returns（返回值）
 确定的返回字段、类型和说明
+
+### System（系统）
+- 必需设备状态、安全围栏和执行后验证规则
 ```
 
 该结构是能力转换器、质量评估器和方法生成器之间的统一契约。实现可以采用其他存储格式，但不得省略这些语义字段。
@@ -144,19 +161,21 @@ module: Synthesis
 | 章节 | 作用 |
 | --- | --- |
 | 元数据 | 保留设备标识、名称、说明、模块和来源修订号 |
-| 操作说明 | 给出每条设备函数的名称和用途 |
+| 技能说明 | 给出每项设备接口的名称、用途和请求分类 |
+| `Object` | 给出该技能适用的容器、属性和状态 |
 | `Initial State` | 限制什么状态下可以调用 |
 | `Effects` | 说明成功后哪些状态发生变化 |
 | `Parameters` | 提供参数类型、单位、范围、枚举、必填性和嵌套结构 |
 | `Constraints` | 表达跨参数和物理强制约束 |
 | `Returns` | 定义成功结果的字段、类型和含义 |
+| `System` | 定义设备状态、安全围栏和结果验证规则 |
 
 ### 完整产物关系
 
 设备能力从提取到可使用，需要形成以下彼此关联的产物。它们均应记录同一 `device_id` 和来源 `revision`，使任一环节可以追溯到设备接口事实。
 
 ```text
-能力数据集
+完整技能定义
   → 设备技能描述
   → 质量评估报告
   → 函数定义与公共类型
@@ -166,7 +185,7 @@ module: Synthesis
 
 | 产物 | 输入 | 必需字段 | 作用 |
 | --- | --- | --- | --- |
-| 设备技能描述 | 能力数据集 | 设备标识、来源修订号、对象、操作、系统、参数、约束、状态变化、返回值 | 形成可读且可检索的设备能力说明 |
+| 设备技能描述 | 完整技能定义 | 设备标识、来源修订号、技能标识、请求分类、三个说明维度和结果验证规则 | 形成可读且可检索的设备技能说明 |
 | 质量评估报告 | 设备技能描述 | `total_score`、`passed`、检查明细、修订要求 | 判断说明是否足以进入能力库 |
 | 函数定义与公共类型 | 准入通过的说明 | 函数签名、参数类型、前置条件、约束、状态变化、返回值、诊断类型 | 形成可计算、可仿真的调用契约 |
 | 仿真报告 | 候选方法与函数定义 | 版本快照、检查结果、状态提交结论、诊断 | 判断候选方法能否转换为执行计划 |
@@ -176,60 +195,64 @@ module: Synthesis
 
 ### 设备技能描述的最小结构
 
-设备技能描述应为每条操作完整保留接口信息。以下结构示例说明产物字段，不绑定任何具体存储格式：
+设备技能描述应为每项技能完整保留接口信息。以下结构示例说明产物字段，不绑定任何具体存储格式：
 
 ```json
 {
   "device_id": "2002186824385539",
   "source_revision": "12",
-  "objects": [
-    {
-      "object_type_id": "container.sample_vial",
-      "properties": ["shape", "diameter_mm", "material"],
-      "states": ["container_status", "sample_status"]
-    }
-  ],
-  "operations": [
+  "skills": [
     {
       "command_id": "open_caps",
-      "initial_state": {"container_status": ["有盖"]},
-      "parameters": ["container_type", "container_count", "container_ids"],
-      "constraints": ["1 <= container_count <= 10"],
-      "effects": {"container_status": "有盖→无盖"},
-      "returns": ["opened_bottles", "container_status", "sample_status"]
+      "request_class": "invoke",
+      "object": {
+        "container_types": ["container.sample_vial"],
+        "required_states": {"container_status": ["有盖"]}
+      },
+      "control": {
+        "parameters": ["container_type", "container_count", "container_ids"],
+        "constraints": ["1 <= container_count <= 10"],
+        "effects": {"container_status": "有盖→无盖"},
+        "returns": ["opened_bottles", "container_status", "sample_status"]
+      },
+      "system": {
+        "required_device_states": ["idle"],
+        "safety_fences": ["容器必须处于有盖状态"],
+        "result_verification": ["返回实际开盖容器和执行后状态"]
+      }
     }
-  ],
-  "system": {
-    "safety_fences": ["仅在设备空闲且容器状态满足前置条件时执行"]
-  }
+  ]
 }
 ```
 
-其中 `parameters`、`constraints`、`effects` 和 `returns` 在实际产物中必须是完整对象定义，不得仅保留字段名称。上例仅用于展示各区域如何关联。
+其中 `parameters`、`constraints`、`effects` 和 `returns` 在实际产物中必须是完整对象定义，不得仅保留字段名称。上例仅用于展示三个维度如何共同说明一项技能。
 
 ## 字段映射
 
 | FSP 数据 | 设备技能描述 |
 | --- | --- |
-| `device.device_id` | `工作站编码` |
+| `device.device_id` | `设备编码` |
 | `device.name` | `name` |
 | `device.description` | `description` |
-| `operations[].initial_state` | `Initial State` |
-| `operations[].effects` | `Effects` |
-| `operations[].parameters` | `Parameters` |
-| `operations[].constraints` | `Constraints` |
-| `operations[].returns` | `Returns` |
-| `system.safety_fences` | 操作约束和总体安全说明 |
+| `skills[].request_class` | 请求分类与安全级别 |
+| `skills[].object.required_states` | `Initial State` |
+| `skills[].control.effects` | `Effects` |
+| `skills[].control.parameters` | `Parameters` |
+| `skills[].control.constraints` | `Constraints` |
+| `skills[].control.returns` | `Returns` |
+| `skills[].system.safety_fences` | 技能安全说明 |
+| `skills[].system.result_verification` | 执行后验证规则 |
 
 ## 转换规则
 
-- 不得新增 FSP 未声明的操作；
+- 不得新增 FSP 未声明的技能；
+- 不得改变技能的 `request_class`；
 - 不得改变参数类型、单位、范围和枚举；
-- 嵌套参数必须按能力数据中的层级展开；
+- 嵌套参数必须按完整技能定义中的层级展开；
 - 初始状态和状态更新必须分别保留；
 - FSP 修订号变化后，旧能力说明必须重新生成或标记过期；
 - 自然语言润色不得改变强制约束。
 
 ## 失败输出
 
-如果 FSP 数据缺少操作描述、参数、初始状态或状态更新，转换程序应当停止生成可准入说明，并把缺失项交给质量评估或修订流程；不得用模型猜测补齐。
+如果 FSP 数据缺少技能描述、请求分类、三个说明维度、参数、前置状态或结果验证规则，转换程序应当停止生成可准入说明，并把缺失项交给质量评估或修订流程；不得用模型猜测补齐。

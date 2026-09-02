@@ -67,11 +67,11 @@ description: "协议错误、执行失败和恢复语义"
 | --- | --- |
 | `unsupported_version` | 协议版本不支持 |
 | `device_not_found` | 目标设备不存在 |
-| `capability_not_found` | 对象、操作或系统能力未声明 |
+| `capability_not_found` | 设备未声明目标技能，或完整技能缺少对象、控制、系统任一维度 |
 | `invalid_parameter` | 参数类型、单位或结构错误 |
 | `parameter_out_of_range` | 参数超出范围或枚举 |
-| `precondition_failed` | 操作前置状态不满足 |
-| `constraint_violation` | 操作约束或安全围栏不满足 |
+| `precondition_failed` | 技能前置状态不满足 |
+| `constraint_violation` | 控制约束或安全围栏不满足 |
 | `revision_conflict` | `expected_revision` 已过期 |
 | `stale_state` | 状态已过期，必须重新读取 |
 | `device_busy` | 设备当前不能接收新操作 |
@@ -84,7 +84,7 @@ description: "协议错误、执行失败和恢复语义"
 
 ## 恢复规则
 
-- `revision_conflict`、`stale_state` 和 `result_unknown` 出现后，调用方必须重新读取相关对象与系统状态；
+- `revision_conflict`、`stale_state` 和 `result_unknown` 出现后，调用方必须重新读取相关对象与设备状态；
 - `retryable=false` 时不得原样自动重试；
 - 操作已经开始时，网络超时不得被解释为失败或成功；
 - 服务端不得在错误消息中返回设备秘密、内部堆栈或其他资源信息。

@@ -3,33 +3,62 @@ title: "FSP 概述"
 description: "ALL 内部面向设备通信的函数状态协议"
 ---
 
-Function State Protocol（FSP，函数状态协议）把不同设备的能力统一表达为对象、操作和系统三个分区，并提供发现、读取、调用、异步任务和诊断语义。
+Function State Protocol（FSP，函数状态协议）统一描述设备公开的技能接口，并提供发现、按需披露、分类请求、异步任务和诊断语义。FSP 不要求设备采用相同的底层接口技术，也不规定设备内部代码结构。
 
-## 三类能力
+## 技能描述
 
-| 分区 | 回答的问题 |
+每项设备技能都是一个可调用接口。FSP 从三个维度说明同一项技能，而不是把设备能力拆成三类接口：
+
+| 维度 | 回答的问题 |
 | --- | --- |
-| 对象 | 设备能够识别或处理什么对象，对象现在是什么状态 |
-| 操作 | 设备能够执行什么函数，参数、约束、状态变化和返回值是什么 |
-| 系统 | 设备整体能做什么、当前状态如何、有哪些安全围栏 |
+| 对象 | 该技能处理哪些容器，对容器形状、尺寸、材质、容积和状态有什么要求 |
+| 控制 | 该技能如何调用，参数、请求分类、前置条件、状态变化、返回值和诊断是什么 |
+| 系统 | 调用时设备必须处于什么状态，适用哪些安全围栏，完成后如何验证结果 |
 
-FSP 不增加第四类设备能力。函数式实验方法属于 ALL 的方法层，不由工作站作为独立模块发布。
+函数式实验方法属于 ALL 的验证和执行层，不由设备作为技能接口发布。
+
+## 渐进式披露
+
+调用方只在需要时读取更详细的数据：
+
+```text
+第一级：fsp/discover
+  → 设备标识、名称、能力修订号和可用性
+
+第二级：fsp/get_capabilities(detail_level="summary")
+  → 技能标识、名称、用途、请求分类和对象摘要
+
+第三级：fsp/get_capabilities(detail_level="full", command_ids=[...])
+  → 所选技能的对象、控制、系统三个完整维度
+  → 参数 Schema、结果 Schema、约束、围栏和验证规则
+```
+
+调用方不得仅凭摘要生成执行请求。构造 `write` 或 `invoke` 请求前，必须读取目标技能的完整定义并确认能力修订号仍然有效。
+
+## 请求分类
+
+`read`、`write` 和 `invoke` 是请求的风险分类，不是设备仅有的三条指令。每项具体技能使用稳定 `command_id` 标识，并声明一种 `request_class`：
+
+| 分类 | 语义 | 最低约束 |
+| --- | --- | --- |
+| `read` | 读取对象、设备状态或既有结果，不改变设备状态 | 设备在线且目标可读时通常可以调用；返回值必须说明观测时间和数据新鲜度 |
+| `write` | 修改设备状态、配置或工艺参数，但不以发生物理动作作为目的 | 必须检查字段可写性、参数范围和预期修订号；完成后必须回读或取得等价确认 |
+| `invoke` | 触发移动、加热、加液、抓取等实际物理动作 | 必须强制检查前置条件、对象状态、设备状态和安全围栏；完成后必须验证实际结果 |
+
+`fsp/read`、`fsp/write` 和 `fsp/invoke` 是三类请求的协议入口。实际执行什么仍由完整技能定义中的 `command_id` 决定。
 
 ## 标准交互
 
 ```text
 fsp/discover
-  → fsp/get_capabilities
-  → fsp/read
-  → fsp/write（声明可写状态时）
-  → fsp/invoke
+  → fsp/get_capabilities（摘要）
+  → fsp/get_capabilities（所需技能详情）
+  → fsp/read | fsp/write | fsp/invoke
   → fsp/get_task（异步时）
-  → 状态与诊断返回
+  → 结果验证与诊断
 ```
 
 ## 底层接口无关
-
-FSP 描述统一语义，不要求设备采用相同底层技术：
 
 ```text
 调用方
@@ -40,36 +69,36 @@ FSP 描述统一语义，不要求设备采用相同底层技术：
       → 本地驱动或设备协议
 ```
 
-接口定义见[接口定义](/specification/device-integration/overview)。设备只要能够通过服务提供对象、操作和系统说明，即可进入设备能力流程。
+接口定义见[接口定义](/specification/device-integration/overview)。设备只需被动提供可映射的接口、状态和结果，由 FSP 服务负责形成统一技能定义并下发请求。
 
-## 方法摘要
+## 协议方法
 
 | 方法 | 作用 |
 | --- | --- |
-| `fsp/discover` | 发现设备 |
-| `fsp/get_capabilities` | 获取对象、操作和系统定义 |
-| `fsp/read` | 读取对象或系统当前状态 |
-| `fsp/write` | 写入设备已声明为可写的目标状态 |
-| `fsp/invoke` | 调用已声明操作 |
+| `fsp/discover` | 发现设备并取得最小设备元数据 |
+| `fsp/get_capabilities` | 按摘要或完整级别读取设备技能定义 |
+| `fsp/read` | 提交读取类请求 |
+| `fsp/write` | 提交写入类请求 |
+| `fsp/invoke` | 提交物理动作类请求 |
 | `fsp/get_task` | 读取异步任务进度和结果 |
 | `fsp/cancel_task` | 请求取消可取消任务 |
 | `fsp/subscribe` | 订阅状态或任务事件 |
 
 ## 设备要求
 
-工作站不需要原生实现 FSP，也不要求重新设计已有接口。符合性要求只检查 FSP 服务可观察到的数据和行为，不检查设备内部代码组织。
+设备不需要原生实现 FSP，也不要求重新设计已有接口。符合性检查只验证 FSP 服务可观察到的数据和行为，不检查设备内部代码组织。
 
-## 指令类别与具体指令
-
-读取、写入和调用只是 `command_class` 的三个允许值。实际设备能力由多条具体指令组成：
+## 技能条目
 
 ```text
-operations[]
-├── command_id: 稳定指令标识
-├── command_class: read | write | invoke
-├── parameters: 参数与约束
-├── effects: 状态变化
-└── returns: 返回值与诊断
+skills[]
+├── command_id
+├── name / description
+├── request_class: read | write | invoke
+├── execution_mode: sync | async
+├── object   对象维度
+├── control  控制维度
+└── system   系统维度
 ```
 
-调用方必须先从能力数据取得 `command_id`，不能把 `read`、`write` 或 `invoke` 当成设备唯一的三条动作。
+调用方必须从当前能力修订号对应的完整技能定义中取得 `command_id`、参数和约束，不得根据名称猜测未声明接口。

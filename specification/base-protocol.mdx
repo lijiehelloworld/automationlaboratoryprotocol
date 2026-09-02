@@ -5,7 +5,7 @@ description: "ALL 远程消息、版本、结果和统一 FSP 方法命名规范
 
 ## 协议边界
 
-Automation Laboratory Language（ALL）规定调用方、实验方法服务与设备服务之间可观察的通信语义。Function State Protocol（FSP）是 ALL 内部用于设备能力发现、状态读取、操作调用和结果返回的设备通信协议。
+Automation Laboratory Language（ALL）规定调用方、实验方法服务与设备服务之间可观察的通信语义。Function State Protocol（FSP）是 ALL 内部用于设备发现、技能披露、分类请求和结果返回的设备通信协议。
 
 ALL 不规定服务端内部的驱动、队列、数据库、控制器或设备总线。现有设备可以通过适配器接入，不需要修改固件或放弃原有接口。
 
@@ -28,6 +28,7 @@ POST https://lab.example.com/all
   "method": "fsp/get_capabilities",
   "params": {
     "device_id": "2002186824385539",
+    "detail_level": "summary",
     "if_revision": "11"
   },
   "meta": {
@@ -61,7 +62,9 @@ fsp/cancel_task
 fsp/subscribe
 ```
 
-对象、操作和系统是能力数据的三个分区，不再各自形成顶层方法命名空间。`read`、`write` 和 `invoke` 是指令类别，不是设备全部指令的固定清单；每个工作站可以在能力数据中声明多条具体指令。
+对象、控制和系统是每项技能的三个描述维度，不各自形成顶层方法命名空间。`read`、`write` 和 `invoke` 是请求分类，不是设备全部指令的固定清单；每个设备可以声明多条具体技能，并以 `command_id` 区分。
+
+`fsp/get_capabilities` 支持渐进式披露。调用方先读取技能摘要，再按 `command_ids` 获取准备使用的完整技能定义；不得仅凭摘要构造写入或物理动作请求。
 
 ## 成功响应
 
@@ -134,10 +137,10 @@ fsp/subscribe
 
 以下数据必须携带修订号：
 
-- 设备能力数据集；
+- 设备技能定义；
 - 研究对象当前状态；
 - 合格设备技能库记录；
-- 工作站绑定的执行计划。
+- 设备绑定的执行计划。
 
 调用方可以使用 `if_revision` 避免重复读取未变化的数据。改变状态的请求应当携带 `expected_revision`；修订号不一致时，服务端不得按过期状态继续执行。
 
@@ -150,4 +153,4 @@ fsp/subscribe
 
 ## 规范用语
 
-本规范使用“必须”“不得”“应当”“不应当”“可以”表达约束强度。大写英文规范词不作为正文要求。
+本规范使用“必须”“不得”“应当”“不应当”“可以”表达约束强度。

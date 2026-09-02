@@ -5,34 +5,38 @@ description: "设备暴露的函数、参数、状态转换和返回值"
 
 ## 定义
 
-操作是设备通过 FSP 暴露的可调用能力。FSP 关注操作语义，不强制设备采用特定 URL、HTTP 方法或驱动实现。
+操作是设备通过 FSP 暴露的具体技能接口。FSP 关注接口语义，不强制设备采用特定 URL、HTTP 方法或驱动实现。
 
-每个操作至少说明：稳定指令标识、指令类别、名称、能力说明、初始状态、状态更新、参数、约束、返回值、诊断和同步或异步模式。
+每个操作至少说明：稳定指令标识、请求分类、名称、用途、对象维度、控制维度、系统维度、返回值、诊断和同步或异步模式。
 
-`command_class` 只能是：
+`request_class` 是请求风险分类，不是具体请求名称，只能是：
 
-| 值 | 含义 |
-| --- | --- |
-| `read` | 读取设备或对象状态，不改变物理状态 |
-| `write` | 把声明为可写的状态设置为目标值，可能触发设备动作 |
-| `invoke` | 执行设备暴露的函数 |
+| 值 | 含义 | 强制要求 |
+| --- | --- | --- |
+| `read` | 读取设备、容器或任务状态，不改变设备状态 | 通常可在设备在线且目标可读时调用；必须返回观测时间和数据新鲜度 |
+| `write` | 修改设备状态、配置或工艺参数，不以物理动作为目的 | 必须校验字段可写性、参数范围和预期修订号；完成后必须验证写入值 |
+| `invoke` | 执行会产生实际物理动作的设备函数 | 必须在下发前检查对象状态、设备状态、全部前置条件和安全围栏，并在完成后验证结果 |
+
+同一分类下可以有任意多条具体技能。例如，读取温度和读取任务进度都属于 `read`，设置温度目标值和修改速度参数都属于 `write`，加液和移动容器都属于 `invoke`。具体技能始终由 `command_id` 区分。
 
 ## 非规范性完整操作集
 
-以下三个操作共同构成一个容器开盖、加液、关盖的设备技能示例。具体设备实现可以声明不同操作，但每条操作必须提供同等完整的信息。
+以下三个操作共同构成一个容器开盖、加液、关盖的设备技能示例。具体设备实现可以声明不同操作，但每条操作必须从对象、控制和系统三个维度提供同等完整的信息。
 
 ### 开盖 `open_caps`
 
 | 项目 | 定义 |
 | --- | --- |
-| `command_class` | `invoke` |
+| `request_class` | `invoke` |
 | `execution_mode` | `sync` |
+| 对象维度 | 适用离心瓶和 50ml 耐热瓶，容器必须有盖 |
 | 前置状态 | `container_status == "有盖"`；样品可为空、液体、固体或固液混合物 |
 | 状态变化 | `container_status: 有盖 → 无盖`；样品状态保持不变 |
+| 系统维度 | 设备必须空闲且无故障；完成后验证实际开盖容器和容器状态 |
 
 | 参数 | 类型 | 必填 | 范围或枚举 | 作用 |
 | --- | --- | --- | --- | --- |
-| `container_type` | `enum` | 是 | `进样瓶`、`50ml耐热瓶` | 指定容器类型 |
+| `container_type` | `enum` | 是 | `离心瓶`、`50ml耐热瓶` | 指定容器类型 |
 | `container_count` | `int` | 是 | `1..10` | 指定当前实验中的容器总数 |
 | `container_ids` | `array[int]` | 是 | `max(container_ids) <= container_count` | 指定本次涉及的容器 |
 | `open_cap_bottle_ids` | `array[object]` | 是 | 每个 `bottle_id` 必须属于 `container_ids` | 指定实际开盖瓶号 |
@@ -44,14 +48,16 @@ description: "设备暴露的函数、参数、状态转换和返回值"
 
 | 项目 | 定义 |
 | --- | --- |
-| `command_class` | `invoke` |
+| `request_class` | `invoke` |
 | `execution_mode` | `sync` |
+| 对象维度 | 适用离心瓶和 50ml 耐热瓶，容器必须无盖 |
 | 前置状态 | `container_status == "无盖"`，且已经完成对应开盖操作 |
 | 状态变化 | `container_status: 无盖 → 有盖`；样品状态保持不变 |
+| 系统维度 | 设备必须空闲且持有对应瓶盖；完成后验证实际关盖容器和容器状态 |
 
 | 参数 | 类型 | 必填 | 范围或枚举 | 作用 |
 | --- | --- | --- | --- | --- |
-| `container_type` | `enum` | 是 | `进样瓶`、`50ml耐热瓶` | 指定容器类型 |
+| `container_type` | `enum` | 是 | `离心瓶`、`50ml耐热瓶` | 指定容器类型 |
 | `container_count` | `int` | 是 | `1..10` | 指定当前实验中的容器总数 |
 | `container_ids` | `array[int]` | 是 | `max(container_ids) <= container_count` | 指定本次涉及的容器 |
 | `close_cap_bottle_ids` | `array[object]` | 是 | 每个 `bottle_id` 必须属于 `container_ids` | 指定实际关盖瓶号 |
@@ -60,17 +66,25 @@ description: "设备暴露的函数、参数、状态转换和返回值"
 
 ### 加液 `add_liquid_with_material`
 
-以下非规范性示例展示一条完整工作站操作：
+以下非规范性示例展示一条完整设备操作：
 
 ```json
 {
   "command_id": "add_liquid_with_material",
-  "command_class": "invoke",
+  "request_class": "invoke",
   "execution_mode": "async",
   "name": "加液_物料绑定",
   "description": "通过指定已经记录的物料进行加液操作。",
+  "object": {
+    "container_types": ["离心瓶", "50ml耐热瓶"],
+    "required_states": {
+      "container_status": ["无盖"],
+      "sample_status": ["空", "液体", "固体", "固液混合物"]
+    }
+  },
+  "control": {
   "initial_state": {
-    "container_type": ["进样瓶", "50ml耐热瓶"],
+    "container_type": ["离心瓶", "50ml耐热瓶"],
     "container_status": ["无盖"],
     "sample_status": ["空", "液体", "固体", "固液混合物"]
   },
@@ -88,7 +102,7 @@ description: "设备暴露的函数、参数、状态转换和返回值"
       "name": "container_type",
       "type": "enum",
       "required": true,
-      "allowed_values": ["进样瓶", "50ml耐热瓶"],
+      "allowed_values": ["离心瓶", "50ml耐热瓶"],
       "description": "目标容器类型"
     },
     {
@@ -167,7 +181,7 @@ description: "设备暴露的函数、参数、状态转换和返回值"
       "name": "containers",
       "type": "array[object]",
       "children": [
-        {"name": "container_type", "type": "enum", "allowed_values": ["进样瓶", "50ml耐热瓶"]},
+        {"name": "container_type", "type": "enum", "allowed_values": ["离心瓶", "50ml耐热瓶"]},
         {"name": "container_status", "type": "enum", "allowed_values": ["无盖"]},
         {"name": "sample_status", "type": "string"},
         {"name": "container_id", "type": "int"},
@@ -176,10 +190,23 @@ description: "设备暴露的函数、参数、状态转换和返回值"
       ]
     }
   ]
+  },
+  "system": {
+    "required_device_states": ["idle"],
+    "forbidden_device_states": ["offline", "fault", "maintenance"],
+    "safety_fences": [
+      "目标容器剩余容量必须满足本次加液",
+      "全部强制控制约束必须在设备动作前通过"
+    ],
+    "result_verification": [
+      "任务必须成功完成",
+      "返回实际加液结果和执行后容器状态"
+    ]
+  }
 }
 ```
 
-上述示例完整展示操作、参数层级、范围、约束和返回字段。`execution_mode` 取值只能是 `sync` 或 `async`，必须由 FSP 适配器根据设备接口声明，不能由转换器猜测。
+上述示例重点展示控制维度中的参数层级、范围、约束和返回字段。对象兼容条件与系统安全条件必须同时存在于该技能的完整定义中。`execution_mode` 取值只能是 `sync` 或 `async`，必须由 FSP 适配器根据设备接口声明，不能由转换器猜测。
 
 ## 参数要求
 
@@ -200,7 +227,13 @@ constraints
 
 嵌套参数必须展开到可验证层级。例如 `dispensing_plan` 应当说明 `sample_bottle_id`、`source_bottle_id`、`ingredient_name` 和 `source_volume_mL`，不能只写“对象数组”。
 
-## 调用
+## 读取类请求
+
+`fsp/read` 用于执行 `request_class=read` 的具体技能。读取通常不受工艺步骤顺序限制，但仍需满足设备在线、目标存在和数据源可用等基本条件。
+
+读取类技能必须声明读取范围、输入 Schema、输出 Schema、`observed_at` 和数据新鲜度。读取不得修改设备、容器或工艺参数；无法取得新鲜数据时应返回诊断或明确标记数据过期，不得把旧缓存伪装为当前状态。
+
+## 调用类请求
 
 ```json
 {
@@ -211,7 +244,7 @@ constraints
     "device_id": "2002186824385539",
     "command_id": "add_liquid_with_material",
     "arguments": {
-      "container_type": "进样瓶",
+      "container_type": "离心瓶",
       "container_count": 2,
       "container_ids": [1],
       "dispensing_plan": [
@@ -230,17 +263,27 @@ constraints
 }
 ```
 
-最终执行计划中的 `operation` 和参数由能力绑定模块解析为这里的 `command_id` 与函数参数，不能直接按字符串猜测。
+`fsp/invoke` 表示请求分类入口，`add_liquid_with_material` 才是本次实际技能。最终执行计划中的 `operation` 和参数由技能绑定模块解析为这里的 `command_id` 与函数参数，不能直接按字符串猜测。
 
-## 写入
+## 写入类请求
 
-只有能力数据将某个字段声明为可写时，调用方才能使用 `fsp/write`。请求参数与 `fsp/invoke` 使用相同外层：`device_id`、能力中取得的 `command_id`、`arguments` 和 `expected_revision`。
+只有完整技能定义将某个字段声明为可写时，调用方才能使用 `fsp/write`。请求参数与 `fsp/invoke` 使用相同外层：`device_id`、能力中取得的 `command_id`、`arguments` 和 `expected_revision`。
 
-本页非规范性设备示例只声明函数式调用，因此不提供该设备的写入指令示例。其他设备只有在能力数据声明可写字段后才能发布相应写入指令。
+写入类请求必须在接触设备前完成以下检查：
+
+1. `command_id` 的 `request_class` 必须为 `write`；
+2. 目标字段必须明确声明为可写；
+3. 新值必须通过类型、范围、枚举和跨字段约束；
+4. `expected_revision` 必须与当前状态修订号一致；
+5. 写入完成后必须回读目标值，或取得具有同等可信度的设备确认。
+
+写入结果未经验证时不得返回成功，也不得提交新的状态修订号。
+
+本页非规范性设备示例只声明调用类技能，因此不提供写入类技能示例。其他设备只有在完整技能定义中声明可写字段后才能发布相应写入技能。
 
 ## 强制约束
 
-操作开始前必须校验能力说明中的强制条件，包括：
+`invoke` 类操作开始前必须校验完整技能定义中的强制条件，包括：
 
 - 初始容器状态；
 - 样品状态；
@@ -249,11 +292,11 @@ constraints
 - 多参数耦合约束；
 - 系统安全围栏。
 
-所有强制错误必须在 `diagnostics` 中返回。存在强制错误时不得接触物理设备，也不得提交研究对象新状态。
+所有强制错误必须在 `diagnostics` 中返回。存在强制错误时不得接触物理设备，也不得提交研究对象新状态。动作完成后还必须验证设备结果、对象状态和声明的状态变化；验证失败时不得把预期结果写成实际结果。
 
 ## 返回
 
-同步成功时，返回值必须符合操作定义中的 `returns`，并包含实际状态变化。异步操作返回任务句柄，见[异步任务](/specification/fsp/async-tasks)。
+同步成功时，返回值必须符合技能控制维度中的 `returns`，并包含实际状态变化。异步技能返回任务句柄，见[异步任务](/specification/fsp/async-tasks)。
 
 ### 同步输出示例
 
@@ -264,7 +307,7 @@ constraints
     "status": "succeeded",
     "state_committed": true,
     "result": {
-      "container_type": "进样瓶",
+      "container_type": "离心瓶",
       "container_status": "无盖",
       "sample_status": "空",
       "opened_bottles": [1, 2],
@@ -280,6 +323,6 @@ constraints
 | --- | --- |
 | `status` | 表示操作成功、失败或结果未知 |
 | `state_committed` | 表示是否已依据设备确认结果提交状态 |
-| `result` | 保存操作定义中声明的返回字段 |
+| `result` | 保存技能控制维度中声明的返回字段 |
 | `revision` | 返回操作完成后的新状态修订号 |
 | `diagnostics[]` | 保存稳定编码、消息、字段路径和重试信息 |

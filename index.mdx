@@ -5,7 +5,7 @@ description: "ALL 自动化实验室语言与 FSP 设备通信规范"
 
 Automation Laboratory Language（ALL，自动化实验室语言）把科学目标、研究对象、函数式实验方法和物理设备连接成可计算、可验证、可追溯的实验闭环。
 
-Function State Protocol（FSP，函数状态协议）位于 ALL 内部，负责以对象、操作、系统三类数据统一发现和调用实验室设备。设备可以保留原有 API、SDK 或驱动，通过适配器接入 FSP。
+Function State Protocol（FSP，函数状态协议）位于 ALL 内部，负责发现设备、渐进披露设备技能，并按请求分类统一调用实验室设备。设备可以保留原有 API、SDK 或驱动，通过适配器接入 FSP。
 
 <CardGroup cols={2}>
   <Card title="阅读规范" icon="book" href="/specification/overview">
@@ -26,10 +26,10 @@ Function State Protocol（FSP，函数状态协议）位于 ALL 内部，负责�
 
 <CardGroup cols={2}>
   <Card title="FSP 函数状态协议" href="/specification/fsp/overview">
-    发现设备，并以对象、操作、系统三块描述能力。
+    发现设备，并按需读取每项技能的对象、控制、系统三个维度。
   </Card>
   <Card title="设备能力" href="/specification/capability/overview">
-    从 FSP 数据生成设备技能描述并完成质量评估。
+    从 FSP 完整技能定义生成设备技能描述并完成质量评估。
   </Card>
   <Card title="对象" href="/specification/fsp/objects">
     组织科学身份、样品、容器、状态、证据和来源。
@@ -41,10 +41,10 @@ Function State Protocol（FSP，函数状态协议）位于 ALL 内部，负责�
 
 ## 设备接入原则
 
-- 工作站只需把对象、操作和系统说清楚；
-- 对象只描述设备可识别的容器及状态；
-- 操作说明函数、参数、约束、状态变化和返回值；
-- 系统说明总体能力、运行状态和安全围栏；
+- 每项设备技能从对象、控制和系统三个维度说明；
+- 对象维度描述技能适用的容器、属性及状态；
+- 控制维度说明参数、请求分类、约束、状态变化和返回值；
+- 系统维度说明所需设备状态、安全围栏和结果验证；
 - FSP 不要求设备采用统一底层接口；
 - 顺序、有限循环、条件、并行汇合和受保护区间由函数式实验方法表达。
 

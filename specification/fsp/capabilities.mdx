@@ -1,11 +1,13 @@
 ---
 title: "设备发现"
-description: "FSP 设备目录和对象、操作、系统三分区能力数据"
+description: "发现设备并按需读取设备技能定义"
 ---
 
 ## 设备发现
 
-### 输入
+`fsp/discover` 只返回设备级最小元数据，不返回完整技能 Schema。
+
+### 请求
 
 ```json
 {
@@ -16,7 +18,7 @@ description: "FSP 设备目录和对象、操作、系统三分区能力数据"
 }
 ```
 
-### 输出
+### 响应
 
 ```json
 {
@@ -27,9 +29,10 @@ description: "FSP 设备目录和对象、操作、系统三分区能力数据"
     "value": {
       "devices": [
         {
-          "device_id": "2002186824385539",
-          "name": "Liquid_Handling_Station_1ml_V2",
-          "capability_revision": "12",
+          "device_id": "lab.device-01",
+          "name": "示例设备",
+          "description": "提供容器处理和状态读取技能。",
+          "capability_revision": "rev-20260902-02",
           "available": true
         }
       ]
@@ -39,34 +42,30 @@ description: "FSP 设备目录和对象、操作、系统三分区能力数据"
 }
 ```
 
-设备名称用于显示；稳定引用必须使用 `device_id`。
-
-### 发现输出字段
-
-| 字段 | 类型 | 是否必需 | 说明 |
+| 字段 | 类型 | 是否必需 | 范围与含义 |
 | --- | --- | --- | --- |
-| `devices` | `array[object]` | 是 | 当前 FSP 服务声明的设备列表 |
-| `devices[].device_id` | `string` | 是 | 稳定设备标识 |
-| `devices[].name` | `string` | 是 | 设备名称 |
-| `devices[].capability_revision` | `string` | 是 | 当前能力数据修订号 |
-| `devices[].available` | `boolean` | 是 | 设备当前是否可接收后续请求 |
+| `devices` | `array[object]` | 是 | 当前 FSP 服务管理的设备；没有设备时返回 `[]` |
+| `devices[].device_id` | `string` | 是 | 长度 `1..128`；稳定设备标识 |
+| `devices[].name` | `string` | 是 | 长度 `1..128`；设备显示名称 |
+| `devices[].description` | `string` | 是 | 长度 `0..1024`；说明设备用途，供调用方判断是否继续读取技能摘要 |
+| `devices[].capability_revision` | `string` | 是 | 长度 `1..128`；当前技能定义修订号 |
+| `devices[].available` | `boolean` | 是 | 表示设备当前是否可接收后续请求，不替代完整系统条件检查 |
 
-## 能力数据集
+稳定引用必须使用 `device_id`，不得使用显示名称定位设备。
 
-FSP 服务必须实现 `fsp/discover` 和 `fsp/get_capabilities`。它们是 FSP 层的统一能力获取接口：负责发现设备、分配或维护 `device_id`、聚合设备能力的对象、控制和系统信息，并向调用方返回结构化能力数据集。
+## 渐进式披露
 
-单个设备不要求原生实现这两个方法；设备侧只需提供或可映射相应事实信息。`fsp/get_capabilities` 使用结构化 JSON 返回能力数据集。
+FSP 把技能信息分为三个读取层级：
 
-接口按清单方式组织：每个操作都以独立条目提供稳定标识、名称、说明、输入约束、输出约束和执行特征。调用方只能调用本次结果中列出的操作，不能根据名称猜测未声明操作。
+| 层级 | 接口 | 返回内容 | 使用时机 |
+| --- | --- | --- | --- |
+| 设备元数据 | `fsp/discover` | 设备身份、简介、修订号和可用性 | 建立设备候选集合 |
+| 技能摘要 | `fsp/get_capabilities`，`detail_level=summary` | 技能标识、名称、说明、请求分类、执行模式和对象摘要 | 检索与选择技能 |
+| 技能详情 | `fsp/get_capabilities`，`detail_level=full` | 所选技能的对象、控制、系统三个完整维度 | 校验并构造实际请求 |
 
-```text
-FSPCapabilityDataset
-├── device
-├── revision
-├── objects[]
-├── operations[]
-└── system
-```
+摘要只能用于发现和筛选。调用 `write` 或 `invoke` 类技能前，调用方必须取得对应完整详情；调用 `read` 类技能时也必须按完整详情校验输入参数。
+
+## 获取技能定义
 
 ### 请求
 
@@ -77,6 +76,8 @@ FSPCapabilityDataset
   "method": "fsp/get_capabilities",
   "params": {
     "device_id": "lab.device-01",
+    "detail_level": "full",
+    "command_ids": ["dispense"],
     "if_revision": "rev-20260902-01"
   }
 }
@@ -84,12 +85,60 @@ FSPCapabilityDataset
 
 | 参数 | 类型 | 是否必需 | 范围与约束 | 作用 |
 | --- | --- | --- | --- | --- |
-| `device_id` | `string` | 是 | 长度 `1..128`；必须来自当前 FSP 服务的 `fsp/discover` 结果 | 指定要读取能力的设备 |
-| `if_revision` | `string` | 否 | 长度 `1..128`；值为调用方已经完整缓存的能力修订号 | 用于条件读取；与当前修订号相同则返回 `not_modified` |
+| `device_id` | `string` | 是 | 长度 `1..128`；必须来自当前服务的发现结果 | 指定设备 |
+| `detail_level` | `string` | 否 | `summary` 或 `full`；默认 `summary` | 指定披露级别 |
+| `command_ids` | `array[string]` | 否 | 仅适用于 `full`；元素数量 `1..100`，元素唯一且每项长度 `1..128` | 只读取指定技能详情；省略时返回全部技能详情 |
+| `if_revision` | `string` | 否 | 长度 `1..128`；必须是调用方已经完整缓存的同级结果修订号 | 条件读取 |
 
-`params` 不得携带未声明字段。`if_revision` 不匹配不是错误，服务端必须返回当前完整能力数据集；设备不存在、参数类型错误或空字符串必须返回协议错误。
+`params` 不得携带未声明字段。`detail_level=summary` 时不得携带 `command_ids`。未知 `command_id` 必须返回错误，不得静默忽略。
 
-### 完整成功结果
+## 技能摘要响应
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "capability-summary-1",
+  "result": {
+    "result_type": "complete",
+    "value": {
+      "device": {
+        "device_id": "lab.device-01",
+        "name": "示例设备",
+        "description": "提供容器处理和状态读取技能。"
+      },
+      "revision": "rev-20260902-02",
+      "detail_level": "summary",
+      "ttl_ms": 300000,
+      "cache_scope": "service",
+      "skills": [
+        {
+          "command_id": "read_device_state",
+          "name": "读取设备状态",
+          "description": "读取设备当前状态和观测时间。",
+          "request_class": "read",
+          "execution_mode": "sync",
+          "object_summary": "设备整体状态"
+        },
+        {
+          "command_id": "dispense",
+          "name": "加液",
+          "description": "向满足条件的目标容器加入指定体积液体。",
+          "request_class": "invoke",
+          "execution_mode": "async",
+          "object_summary": "已声明兼容类型的目标容器"
+        }
+      ]
+    },
+    "diagnostics": []
+  }
+}
+```
+
+摘要中的每项技能必须足以支持检索，但不得省略 `request_class`。调用方据此判断后续需要采用的安全校验级别。
+
+## 技能详情响应
+
+对象、控制和系统是同一项技能的三个说明维度，不是三组独立能力或三套设备接口。
 
 ```json
 {
@@ -101,188 +150,178 @@ FSPCapabilityDataset
       "device": {
         "device_id": "lab.device-01",
         "name": "示例设备",
-        "description": "提供已声明的容器操作和状态读取能力。"
+        "description": "提供容器处理和状态读取技能。"
       },
       "revision": "rev-20260902-02",
+      "detail_level": "full",
       "ttl_ms": 300000,
       "cache_scope": "service",
-      "objects": [
-        {
-          "object_type_id": "container.vial",
-          "variant_id": "vial.example",
-          "name": "示例进样瓶",
-          "properties": {
-            "geometry": {
-              "shape": "cylindrical",
-              "height_mm": 75,
-              "body_outer_diameter_mm": 22.4,
-              "mouth_outer_diameter_mm": 19.6
-            },
-            "material": {
-              "primary": "glass"
-            },
-            "capacity": {
-              "nominal_volume_mL": 2.0,
-              "max_working_volume_mL": 1.8
-            }
-          },
-          "states": {
-            "container_status": ["有盖", "无盖"],
-            "sample_status": ["空", "液体", "固体", "固液混合物"]
-          }
-        }
-      ],
-      "operations": [
+      "skills": [
         {
           "command_id": "dispense",
-          "command_class": "invoke",
-          "execution_mode": "async",
           "name": "加液",
-          "description": "向满足前置条件的目标容器加入指定体积的液体。",
-          "parameters": [
-            {
-              "name": "target_container_id",
-              "type": "string",
-              "required": true,
-              "constraints": ["length 1..128"],
-              "description": "目标容器实例标识"
-            },
-            {
-              "name": "source_container_id",
-              "type": "string",
-              "required": true,
-              "constraints": ["length 1..128"],
-              "description": "来源容器实例标识"
-            },
-            {
-              "name": "volume",
-              "type": "object",
-              "required": true,
-              "children": [
-                {"name": "value", "type": "number", "required": true, "exclusive_minimum": 0, "maximum": 1.0},
-                {"name": "unit", "type": "enum", "required": true, "allowed_values": ["mL"]}
-              ],
-              "description": "加液体积"
-            }
-          ],
-          "input_schema": {
-            "type": "object",
-            "additional_properties": false,
-            "properties": {
-              "target_container_id": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 128,
-                "description": "目标容器实例标识"
-              },
-              "source_container_id": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 128,
-                "description": "来源容器实例标识"
-              },
-              "volume": {
-                "type": "object",
+          "description": "向满足条件的目标容器加入指定体积液体。",
+          "request_class": "invoke",
+          "execution_mode": "async",
+          "object": {
+            "role": "target_container",
+            "description": "承接液体并保存执行后样品状态的目标容器。",
+            "container_types": [
+              {
+                "container_type_id": "container.vial.example",
+                "name": "示例进样瓶",
                 "properties": {
-                  "value": {"type": "number", "exclusiveMinimum": 0, "maximum": 1.0},
-                  "unit": {"type": "string", "enum": ["mL"]}
+                  "shape": "cylindrical",
+                  "height_mm": 75,
+                  "outer_diameter_mm": 22.4,
+                  "material": "glass",
+                  "nominal_volume_mL": 2.0,
+                  "max_working_volume_mL": 1.8
                 },
-                "required": ["value", "unit"],
-                "additional_properties": false
+                "required_states": {
+                  "container_status": ["无盖"],
+                  "sample_status": ["空", "液体"]
+                }
               }
-            },
-            "required": ["target_container_id", "source_container_id", "volume"]
+            ]
           },
-          "constraints": [
-            "target.container_status == '无盖'",
-            "volume.value <= target.max_working_volume - target.sample_volume"
-          ],
-          "effects": {
-            "sample_status": {"空": "液体", "液体": "液体"}
-          },
-          "returns": [
-            {"name": "task_id", "type": "string", "required": true, "constraints": ["length 1..128"]},
-            {"name": "state", "type": "enum", "required": true, "allowed_values": ["queued", "running", "completed", "failed", "cancelled"]}
-          ],
-          "output_schema": {
-            "type": "object",
-            "properties": {
-              "task_id": {"type": "string", "minLength": 1, "maxLength": 128},
-              "state": {"type": "string", "enum": ["queued", "running", "completed", "failed", "cancelled"]}
+          "control": {
+            "preconditions": [
+              "目标容器存在且类型兼容",
+              "目标容器处于无盖状态"
+            ],
+            "parameters": [
+              {
+                "name": "target_container_id",
+                "type": "string",
+                "required": true,
+                "description": "目标容器实例标识",
+                "constraints": ["length 1..128"]
+              },
+              {
+                "name": "source_container_id",
+                "type": "string",
+                "required": true,
+                "description": "来源容器实例标识",
+                "constraints": ["length 1..128"]
+              },
+              {
+                "name": "volume",
+                "type": "object",
+                "required": true,
+                "description": "加液体积",
+                "children": [
+                  {"name": "value", "type": "number", "required": true, "exclusive_minimum": 0, "maximum": 1.0},
+                  {"name": "unit", "type": "enum", "required": true, "allowed_values": ["mL"]}
+                ]
+              }
+            ],
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "target_container_id": {"type": "string", "minLength": 1, "maxLength": 128},
+                "source_container_id": {"type": "string", "minLength": 1, "maxLength": 128},
+                "volume": {
+                  "type": "object",
+                  "properties": {
+                    "value": {"type": "number", "exclusiveMinimum": 0, "maximum": 1.0},
+                    "unit": {"type": "string", "enum": ["mL"]}
+                  },
+                  "required": ["value", "unit"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["target_container_id", "source_container_id", "volume"],
+              "additionalProperties": false
             },
-            "required": ["task_id", "state"],
-            "additional_properties": false
+            "constraints": [
+              "volume.value <= target.max_working_volume - target.sample_volume"
+            ],
+            "effects": {
+              "sample_status": {"空": "液体", "液体": "液体"}
+            },
+            "returns": [
+              {"name": "task_id", "type": "string", "required": true},
+              {"name": "status", "type": "enum", "required": true, "allowed_values": ["queued", "running", "completed", "failed", "cancelled"]}
+            ],
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "task_id": {"type": "string", "minLength": 1, "maxLength": 128},
+                "status": {"type": "string", "enum": ["queued", "running", "completed", "failed", "cancelled"]}
+              },
+              "required": ["task_id", "status"],
+              "additionalProperties": false
+            }
+          },
+          "system": {
+            "required_device_states": ["idle"],
+            "forbidden_device_states": ["fault", "maintenance", "offline"],
+            "safety_fences": [
+              "目标容器剩余容量必须大于或等于加液体积"
+            ],
+            "result_verification": [
+              "任务必须进入 completed 状态",
+              "返回实际加液体积和目标容器执行后状态",
+              "提交对象状态时必须产生新的状态修订号"
+            ]
           }
         }
-      ],
-      "system": {
-        "availability_states": ["offline", "idle", "busy", "paused", "fault", "maintenance"],
-        "status_fields": ["state", "available", "current_task"],
-        "safety_fences": [
-          {
-            "name": "容器状态约束",
-            "description": "加液前容器必须处于无盖状态。"
-          }
-        ]
-      }
+      ]
     },
     "diagnostics": []
   }
 }
 ```
 
-该示例只说明数据结构；示例中的 `1.0 mL` 是该示例操作的参数上限，不构成所有设备的通用限制。设备必须在其实际操作条目中给出自己的范围、枚举、单位和跨字段约束。三个分区分别见[对象](/specification/fsp/objects)、[操作](/specification/fsp/operations)和[系统](/specification/fsp/system)。
+示例中的数值只用于解释字段结构，不构成所有设备的通用限制。设备技能必须给出自身真实的范围、枚举、单位和跨字段约束。
 
-### 成功结果字段
+## 响应字段
 
-| 字段 | 类型 | 是否必需 | 说明 |
+| 字段 | 类型 | 是否必需 | 范围与含义 |
 | --- | --- | --- | --- |
 | `device` | `object` | 是 | 设备标识、名称和总体说明 |
-| `device.device_id` | `string` | 是 | 长度 `1..128`；稳定设备标识 |
-| `device.name` | `string` | 是 | 长度 `1..128`；设备名称 |
-| `device.description` | `string` | 是 | 长度 `0..4096`；能力总体说明 |
-| `revision` | `string` | 是 | 长度 `1..128`；本次能力数据修订号 |
-| `ttl_ms` | `integer` | 是 | `0..86400000`；`0` 表示本结果不可缓存，其他值表示最大缓存时长（毫秒） |
-| `cache_scope` | `string` | 是 | `none` 或 `service`；表示结果是否可在当前 FSP 服务范围内缓存 |
-| `objects` | `array[object]` | 是 | FSP 对象类型定义；为空时返回 `[]` |
-| `operations` | `array[object]` | 是 | 已声明的可调用操作；为空时返回 `[]` |
-| `system` | `object` | 是 | 总体能力、运行状态字段和安全围栏定义 |
-| `diagnostics` | `array[object]` | 是 | 非阻断提示或结果诊断；没有内容时返回 `[]` |
+| `revision` | `string` | 是 | 长度 `1..128`；本次技能定义修订号 |
+| `detail_level` | `string` | 是 | 与请求一致，为 `summary` 或 `full` |
+| `ttl_ms` | `integer` | 是 | `0..86400000`；`0` 表示不可缓存 |
+| `cache_scope` | `string` | 是 | `none` 或 `service` |
+| `skills` | `array[object]` | 是 | 当前披露范围内的技能；无匹配项时返回 `[]` |
+| `diagnostics` | `array[object]` | 是 | 非阻断提示；没有内容时返回 `[]` |
 
-空数组表示当前设备没有该类对象或指令，不能省略字段。
-
-### 操作条目
-
-每个 `operations[]` 条目相当于一项可调用能力的完整清单。`command_id` 在同一设备能力数据集内必须唯一；调用方只能使用该字段调用操作。
+### 摘要条目
 
 | 字段 | 类型 | 是否必需 | 范围与约束 |
 | --- | --- | --- | --- |
-| `command_id` | `string` | 是 | 长度 `1..128`；仅允许 ASCII 字母、数字、`_`、`-`、`.`；同一数据集内唯一 |
-| `name` | `string` | 是 | 长度 `1..128`；面向人的操作名称 |
-| `description` | `string` | 是 | 长度 `1..4096`；说明操作目的、作用对象和可观察结果 |
-| `command_class` | `string` | 是 | `read`、`write` 或 `invoke` |
+| `command_id` | `string` | 是 | 长度 `1..128`；仅允许 ASCII 字母、数字、`_`、`-`、`.`；同一设备内唯一 |
+| `name` | `string` | 是 | 长度 `1..128` |
+| `description` | `string` | 是 | 长度 `1..1024`；同时说明技能用途和适用时机 |
+| `request_class` | `string` | 是 | `read`、`write` 或 `invoke` |
 | `execution_mode` | `string` | 是 | `sync` 或 `async` |
-| `parameters` | `array[object]` | 是 | 参数的展开定义；每项必须有名称、类型、必填性、说明和适用约束 |
-| `input_schema` | `object` | 是 | 参数对象定义；必须列出参数类型、必填项、范围、单位、枚举和嵌套字段 |
-| `constraints` | `array[string]` | 是 | 影响调用是否允许的前置状态或跨字段约束；无约束时返回 `[]` |
-| `effects` | `object` | 是 | 成功完成后可能产生的对象或系统状态变化；只描述可提交的实际变化 |
-| `returns` | `array[object]` | 是 | 返回字段的展开定义；每项必须有名称、类型和适用约束 |
-| `output_schema` | `object` | 是 | 成功结果定义；异步操作必须包含任务标识和任务状态 |
+| `object_summary` | `string` | 是 | 长度 `0..512`；概括作用对象或读取范围 |
 
-`parameters` 必须与 `input_schema` 表达同一组参数，`returns` 必须与 `output_schema` 表达同一组输出。`input_schema` 与 `output_schema` 必须是有效的 JSON Schema 2020-12 对象，使用 `type`、`properties`、`required`、`enum`、`minimum`、`maximum`、`exclusiveMinimum`、`minLength`、`maxLength`、`items` 和 `additionalProperties` 等核心字段。跨字段、状态或物理容量约束无法只用 Schema 表达时，必须同时写入 `constraints[]`。
+### 完整条目
 
-### 对象与系统条目
+完整技能在摘要字段基础上必须增加以下三个维度：
 
-| 分区 | 必需字段 | 约束 |
+| 维度 | 必需内容 |
+| --- | --- |
+| `object` | 对象角色、容器类型、形状、尺寸、材质、容积和允许状态；未知物理值使用 `null` |
+| `control` | 前置条件、参数展开定义、`input_schema`、跨字段约束、状态变化、返回展开定义和 `output_schema` |
+| `system` | 必需设备状态、禁止状态、安全围栏和结果验证规则 |
+
+`control.parameters` 必须与 `control.input_schema` 表达同一组参数；`control.returns` 必须与 `control.output_schema` 表达同一组输出。两个 Schema 必须符合 JSON Schema 2020-12。Schema 不能表达的跨字段、对象状态和物理约束必须写入 `preconditions`、`constraints` 或 `safety_fences`。
+
+## 分类约束
+
+| 请求分类 | 完整技能必须声明 | 执行要求 |
 | --- | --- | --- |
-| `objects[]` | `object_type_id`、`variant_id`、`name`、`properties`、`states` | 类型标识长度 `1..128`；同一数据集内唯一；物理值未知时使用 `null`，不得推测 |
-| `system.availability_states` | `array[string]` | 至少包含一个可用状态和一个不可用状态 |
-| `system.status_fields` | `array[string]` | 声明后才能由 `fsp/read` 返回 |
-| `system.safety_fences` | `array[object]` | 每项必须有名称和可执行的约束说明；没有围栏时返回 `[]` |
+| `read` | 读取范围、输入参数、输出 Schema、观测时间和新鲜度语义 | 不得改变设备或对象状态；设备在线且数据源可用时通常允许调用 |
+| `write` | 可写字段、目标值范围、预期修订号、写入后验证规则 | 写前校验字段与修订号；写后回读或取得等价确认；验证失败不得报告成功 |
+| `invoke` | 对象条件、设备状态、全部前置条件、安全围栏、状态变化和结果验证 | 请求进入设备前必须完成强制检查；完成后必须用实际状态或证据验证结果 |
 
 ## 条件读取
 
-调用方可以携带 `if_revision`。仅当该值等于当前能力修订号时，服务端才返回未修改结果；该结果不包含 `objects`、`operations` 或 `system`，调用方必须继续使用已完整缓存的数据集。
+`if_revision` 只适用于调用方已经完整缓存的相同披露级别和相同 `command_ids` 集合。修订号相同时，服务端返回：
 
 ```json
 {
@@ -292,6 +331,7 @@ FSPCapabilityDataset
     "result_type": "not_modified",
     "value": {
       "revision": "rev-20260902-02",
+      "detail_level": "full",
       "ttl_ms": 300000,
       "cache_scope": "service"
     },
@@ -300,11 +340,9 @@ FSPCapabilityDataset
 }
 ```
 
-调用方未缓存完整能力数据集时不得发送 `if_revision`；服务端不得把未修改结果用于替代首次完整读取。
+首次读取、缓存不完整或筛选条件变化时不得发送 `if_revision`。`if_revision` 不匹配不是错误，服务端必须返回当前结果。
 
-## 错误输出
-
-设备不存在、参数错误或版本不支持时，请求不得返回部分能力数据：
+## 错误响应
 
 ```json
 {
@@ -312,13 +350,13 @@ FSPCapabilityDataset
   "id": "capability-1",
   "error": {
     "code": -32004,
-    "message": "设备不存在",
+    "message": "技能不存在",
     "data": {
       "diagnostics": [
         {
-          "code": "device_not_found",
-          "path": "params.device_id",
-          "message": "无法读取目标设备能力"
+          "code": "command_not_found",
+          "path": "params.command_ids[0]",
+          "message": "目标设备未声明该技能"
         }
       ]
     }
@@ -326,24 +364,27 @@ FSPCapabilityDataset
 }
 ```
 
-错误响应不得包含其他设备的能力、状态或内部实现信息。
+| 诊断代码 | 触发条件 | 服务端行为 |
+| --- | --- | --- |
+| `invalid_request` | 缺少必需参数、类型错误、未知参数或参数组合无效 | 返回协议错误，不返回技能数据 |
+| `device_not_found` | 当前服务没有对应 `device_id` | 返回协议错误 |
+| `command_not_found` | `command_ids` 包含设备未声明的技能 | 返回协议错误，不忽略未知项 |
+| `invalid_revision` | `if_revision` 格式错误或缓存条件不完整 | 返回协议错误 |
+| `capability_unavailable` | 暂时无法生成一致的技能定义 | 返回协议错误，不返回部分详情 |
 
-| 诊断代码 | 触发条件 | `path` | 服务端行为 |
-| --- | --- | --- | --- |
-| `invalid_request` | 缺少 `device_id`、类型错误、空字符串或存在未知参数 | 对应请求字段 | 返回协议错误，不返回能力数据 |
-| `device_not_found` | `device_id` 不在当前 FSP 服务的设备目录中 | `params.device_id` | 返回协议错误，不返回能力数据 |
-| `invalid_revision` | `if_revision` 不是合法字符串 | `params.if_revision` | 返回协议错误，不返回能力数据 |
-| `capability_unavailable` | 服务暂时无法生成一致的能力数据集 | `params.device_id` | 返回协议错误，不返回部分对象或操作 |
+错误响应不得包含其他设备的技能、状态或内部实现信息。
+
+## 修订规则
 
 以下变化必须产生新的能力修订号：
 
-- 新增、删除或修改对象类型；
-- 新增、删除或修改操作签名、约束或返回值；
-- 修改系统能力说明或安全围栏；
+- 新增、删除或修改技能；
+- 修改技能的对象、控制或系统任一维度；
+- 修改请求分类、参数、返回值、前置条件、安全围栏或验证规则；
 - 修改会影响调用方行为的适配映射。
 
 设备当前忙闲状态和任务进度不改变能力修订号。
 
-## 能力数据的事实地位
+## 事实地位
 
-FSP 能力数据是设备能力的事实来源。由其生成的设备技能描述、函数式技能或其他模型可读说明不得改变对象属性、操作参数、强制约束和系统安全围栏。
+完整 FSP 技能定义是设备接口事实来源。由其生成的设备技能说明、函数定义或其他模型可读内容不得改变对象属性、控制参数、请求分类、强制约束、系统安全围栏和结果验证规则。

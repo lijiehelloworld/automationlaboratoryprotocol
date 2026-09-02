@@ -5,7 +5,7 @@ description: "保存通过评估的设备技能描述、函数式技能和版本
 
 ## 作用
 
-合格设备技能库向实验编排代理提供经过质量检查的设备技能。它是 FSP 能力数据、设备技能描述、质量报告和函数式技能之间的可追溯集合，不另行定义设备事实。
+合格设备技能库向实验编排代理提供经过质量检查的设备技能。它是 FSP 完整技能定义、设备技能描述、质量报告和函数式技能之间的可追溯集合，不另行定义设备事实。
 
 ## 准入输入
 
@@ -24,7 +24,7 @@ FSP 设备标识和能力修订号
 
 | 输入产物 | 示例值 | 作用 |
 | --- | --- | --- |
-| 设备标识 | `2002186824385539` | 关联真实工作站 |
+| 设备标识 | `2002186824385539` | 关联真实设备 |
 | 能力修订号 | `12` | 固定能力事实版本 |
 | 设备技能描述 | 包含开盖、加液、关盖三条操作的 MDX 内容 | 供阅读、检索和质量评估 |
 | 质量报告 | `total_score=95.0`、`passed=true`、`threshold=60` | 决定是否准入并记录缺陷 |
@@ -36,14 +36,14 @@ FSP 设备标识和能力修订号
 
 | 产物 | 必需内容 | 主要用途 |
 | --- | --- | --- |
-| 设备技能描述 | 身份、对象、操作、系统、参数、约束、状态变化和返回值 | 人员与模型阅读、质量评估 |
+| 设备技能描述 | 身份、技能标识、请求分类、对象/控制/系统三个维度、参数、状态变化和验证规则 | 人员与模型阅读、质量评估 |
 | 函数式技能定义 | 函数签名、类型、前置条件、强制约束、状态变化、返回值和诊断 | 方法生成、静态检查和仿真 |
 
 函数式技能至少应提供以下三个部分：
 
 ```text
 公共数据类型
-工作站命名空间及操作函数
+设备命名空间及操作函数
 统一结果与诊断类型
 ```
 
@@ -156,7 +156,7 @@ StepResult：操作结果、状态变化与诊断
 
 ```python
 def open_caps(
-    container_type: Literal["进样瓶", "50ml耐热瓶"],
+    container_type: Literal["离心瓶", "50ml耐热瓶"],
     container_count: int,
     container_ids: list[int],
     open_cap_bottle_ids: list[OpenCapBottle],
@@ -190,7 +190,7 @@ def open_caps(
         返回已开盖容器编号、容器状态、样品状态和诊断。
 
     Example:
-        对 1、2 号进样瓶调用，返回 opened_bottles=[1, 2]。
+        对 1、2 号离心瓶调用，返回 opened_bottles=[1, 2]。
     """
     ...
 ```
@@ -221,10 +221,10 @@ def open_caps(
 实验编排代理查询能力库时至少需要获得：
 
 ```text
-工作站编码
-工作站名称
-能力说明
-可用操作
+设备编码
+设备名称
+技能说明
+可用技能及请求分类
 函数签名
 适用容器和状态
 参数约束
@@ -242,10 +242,10 @@ def open_caps(
   "device_name": "Liquid_Handling_Station_1ml_V2",
   "revision": "12",
   "quality": {"score": 95.0, "passed": true, "threshold": 60},
-  "operations": [
-    {"command_id": "open_caps", "function_name": "open_caps"},
-    {"command_id": "add_liquid_with_material", "function_name": "add_liquid_with_material"},
-    {"command_id": "close_caps", "function_name": "close_caps"}
+  "skills": [
+    {"command_id": "open_caps", "request_class": "invoke", "function_name": "open_caps"},
+    {"command_id": "add_liquid_with_material", "request_class": "invoke", "function_name": "add_liquid_with_material"},
+    {"command_id": "close_caps", "request_class": "invoke", "function_name": "close_caps"}
   ],
   "object_types": ["container.sample_vial"]
 }
@@ -253,8 +253,8 @@ def open_caps(
 
 | 输出字段 | 作用 |
 | --- | --- |
-| `device_id`、`device_name` | 标识可绑定工作站 |
+| `device_id`、`device_name` | 标识可绑定设备 |
 | `revision` | 约束方法与能力使用同一版本 |
 | `quality` | 表示准入结果和评分依据 |
-| `operations[]` | 建立设备指令与函数名称的确定映射 |
+| `skills[]` | 建立设备技能、请求分类与函数名称的确定映射 |
 | `object_types[]` | 用于筛选设备可处理的对象类型 |

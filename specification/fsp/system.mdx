@@ -1,41 +1,34 @@
 ---
 title: "系统"
-description: "设备总体能力、运行状态和安全围栏"
+description: "设备技能所需的运行状态、安全围栏和结果验证"
 ---
 
 ## 作用
 
-系统分区描述设备整体，而不是某个具体实验操作。它至少包括设备身份、能力总体说明、当前状态和安全围栏。
+系统维度说明某项技能可执行时的设备条件，包括设备状态、可用性、安全围栏和结果验证要求。设备级状态可以被多项技能引用，但不能脱离具体技能替代其前置条件。
 
-## 能力说明
+## 技能系统维度
 
 ```json
 {
-  "device_id": "2002186824385539",
-  "name": "Liquid_Handling_Station_1ml_V2",
-  "description": "支持容器开盖、加液、关盖操作。最多可添加16种不同溶液，移液枪单次最大移液量1mL，单种溶液总加注量不超过3mL。严格执行一瓶一液原则，单只原液瓶仅盛放一种溶液，全程保持原液瓶编号顺序固定不变。",
-  "capability_summary": [
-    "开盖",
-    "加液_物料绑定",
-    "关盖"
-  ],
-  "status_fields": [
-    "state",
-    "available",
-    "current_task"
-  ],
-  "safety_fences": [
-    {
-      "name": "容器状态约束",
-      "description": "加液前容器必须处于无盖状态。"
-    },
-    {
-      "name": "单次移液量约束",
-      "description": "单次移液量不得超过设备声明上限。"
-    }
-  ]
+  "command_id": "dispense",
+  "request_class": "invoke",
+  "system": {
+    "required_device_states": ["idle"],
+    "forbidden_device_states": ["offline", "fault", "maintenance"],
+    "safety_fences": [
+      "目标容器剩余容量必须大于或等于加液体积",
+      "单次加液量不得超过技能声明上限"
+    ],
+    "result_verification": [
+      "动作任务必须进入 completed 状态",
+      "返回实际加液体积和目标容器执行后状态"
+    ]
+  }
 }
 ```
+
+系统维度只描述 `dispense` 技能的执行条件。另一项技能即使作用于同一设备，也必须声明自身适用的状态、围栏和结果验证规则。
 
 ## 状态读取
 
@@ -46,15 +39,17 @@ description: "设备总体能力、运行状态和安全围栏"
   "method": "fsp/read",
   "params": {
     "device_id": "2002186824385539",
-    "category": "system"
+    "command_id": "read_device_state",
+    "arguments": {}
   }
 }
 ```
 
 | 输入字段 | 类型 | 作用 |
 | --- | --- | --- |
-| `device_id` | `string` | 指定要读取的工作站 |
-| `category` | `string` | 固定为 `system`，表示读取工作站整体状态 |
+| `device_id` | `string` | 指定要读取的设备 |
+| `command_id` | `string` | 指定完整技能定义中 `request_class=read` 的设备状态读取技能 |
+| `arguments` | `object` | 提供该读取技能声明的参数；没有参数时使用空对象 |
 
 ```json
 {
@@ -73,7 +68,7 @@ description: "设备总体能力、运行状态和安全围栏"
 | 输出字段 | 类型 | 作用 |
 | --- | --- | --- |
 | `state` | `string` | 表示离线、空闲、忙碌、暂停、故障或维护状态 |
-| `available` | `boolean` | 表示工作站当前是否接受操作 |
+| `available` | `boolean` | 表示设备当前是否接受操作 |
 | `current_task` | `string` 或 `null` | 关联当前任务；空闲时为 `null` |
 | `capability_revision` | `string` | 表示当前状态对应的能力版本 |
 | `observed_at` | `string` | 表示状态观测时间 |
@@ -105,4 +100,4 @@ maintenance
 - 是否需要人工确认；
 - 故障或急停状态是否禁止执行。
 
-安全围栏必须在设备执行前判断。自然语言实验方法、函数式技能或调用方提示不能绕过安全围栏。
+安全围栏必须在 `write` 或 `invoke` 请求进入设备前判断。`invoke` 类技能还必须在动作完成后按系统维度中的 `result_verification` 验证实际结果。自然语言实验方法、函数式技能或调用方提示不能绕过安全围栏。
