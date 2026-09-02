@@ -1,0 +1,109 @@
+---
+title: "仿真器"
+description: "在不调用物理设备的前提下验证中间程序的状态、约束和科学语义"
+---
+
+## 职责
+
+仿真器接收编译后的中间程序，在隔离状态中逐步计算对象变化和系统条件。它用于发现参数越界、状态不闭合、资源冲突和不可满足的完成条件，不产生真实设备动作。
+
+## 输入
+
+```json
+{
+  "program_id": "program-001",
+  "definition_revisions": {"device-01": "12"},
+  "initial_state": {
+    "objects": {
+      "container-01": {
+        "container_status": "无盖",
+        "sample_status": "空",
+        "sample_volume_mL": 0
+      }
+    },
+    "systems": {
+      "device-01": {"state": "idle", "available": true}
+    }
+  },
+  "steps": [
+    {
+      "step_id": "step-1",
+      "device_id": "device-01",
+      "operation_id": "add_liquid",
+      "arguments": {"container_id": "container-01", "volume_mL": 0.5}
+    }
+  ]
+}
+```
+
+| 输入 | 作用 |
+| --- | --- |
+| `definition_revisions` | 确保仿真与编译使用同一份设备定义 |
+| `initial_state.objects` | 提供容器和样品的可计算初态 |
+| `initial_state.systems` | 提供设备状态及可用性 |
+| `steps[]` | 提供待验证的操作顺序、依赖和参数 |
+
+## 仿真过程
+
+仿真器按照以下顺序处理每个步骤：
+
+1. 确认操作与设备定义版本一致；
+2. 根据输入 Schema 检查类型、必填项、范围和枚举；
+3. 检查容器类型、容积、当前状态和操作前置条件；
+4. 检查设备状态、安全围栏及并发冲突；
+5. 在隔离副本中应用声明的状态转换；
+6. 检查完成条件、结果 Schema 和后续步骤前置条件；
+7. 汇总可计算性、物理约束与科学语义诊断。
+
+仿真只使用设备定义中明确声明的规则。无法仿真的物理现象必须标记为需要执行后验证，不能被假定为成功。
+
+## 输出
+
+```json
+{
+  "program_id": "program-001",
+  "simulation_id": "simulation-001",
+  "status": "passed",
+  "checks": {
+    "type_check": "passed",
+    "parameter_check": "passed",
+    "state_closure": "passed",
+    "system_fences": "passed",
+    "scientific_semantics": "passed"
+  },
+  "predicted_state": {
+    "objects": {
+      "container-01": {
+        "container_status": "无盖",
+        "sample_status": "液体",
+        "sample_volume_mL": 0.5
+      }
+    }
+  },
+  "runtime_verifications": [
+    "核对设备返回的实际加液量",
+    "重新读取目标容器的可确认状态"
+  ],
+  "diagnostics": []
+}
+```
+
+## 失败处理
+
+失败输出必须定位到具体步骤和约束：
+
+```json
+{
+  "status": "failed",
+  "failed_step_id": "step-1",
+  "diagnostics": [
+    {
+      "code": "parameter_out_of_range",
+      "path": "steps[0].arguments.volume_mL",
+      "message": "volume_mL 必须位于 0.05 至 0.8 之间"
+    }
+  ]
+}
+```
+
+仿真失败的程序不得交给执行器。修订后的程序必须从编译/解释器重新进入仿真流程。

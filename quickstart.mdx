@@ -1,48 +1,53 @@
 ---
 title: "快速开始"
-description: "从 FSP 设备技能到函数式实验方法的最短路径"
+description: "从 FSP 设备定义到实验程序执行的最短路径"
 ---
 
 <Steps>
-  <Step title="发现设备">
-    调用 `fsp/discover`，取得服务声明的设备、能力修订号和可用状态。
+  <Step title="准备 FSP 设备定义">
+    在设备接入配置中提供操作、对象和系统定义。
   </Step>
-  <Step title="读取技能摘要">
-    调用 `fsp/get_capabilities` 并设置 `detail_level=summary`，取得技能标识、用途、请求分类和对象摘要。
+  <Step title="编译/解释">
+    将实验目标、初始对象状态和 FSP 设备定义交给编译/解释器，取得类型化中间程序。
   </Step>
-  <Step title="读取技能详情">
-    对准备使用的技能设置 `detail_level=full` 和 `command_ids`，取得对象、控制和系统三个完整维度。
+  <Step title="仿真">
+    使用同一设备定义版本检查参数、状态闭合、系统围栏和完成条件。
   </Step>
-  <Step title="完成技能提取与准入">
-    生成设备技能描述并运行技能质量评估。只有 `passed=true` 且达到阈值的技能进入合格设备技能库。
+  <Step title="执行">
+    仅把 `simulation_status=passed` 的程序交给执行器，由执行器按 `read`、`write` 或 `invoke` 分类通过 FSP 下发。
   </Step>
-  <Step title="生成并验证方法">
-    使用准入后的函数式技能生成 `generate_recipe()`，完成优化、状态仿真和科学语义评审。
-  </Step>
-  <Step title="绑定并执行">
-    把验证后的方法转换为含 `steps`、`path` 和 `涉及设备` 的执行计划，再按每步 `request_class` 选择 `fsp/read`、`fsp/write` 或 `fsp/invoke`。
+  <Step title="核验结果">
+    同步结果立即验证；异步操作通过系统任务查询，成功后再提交实际对象状态。
   </Step>
 </Steps>
 
-## 最小 FSP 请求
+## 最小执行请求
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "discover-1",
-  "method": "fsp/discover",
-  "params": {}
+  "id": "execute-1",
+  "method": "fsp/invoke",
+  "params": {
+    "device_id": "device-01",
+    "operation_id": "add_liquid",
+    "arguments": {
+      "container_id": "container-01",
+      "volume_mL": 0.5
+    },
+    "expected_system_revision": "state-21"
+  }
 }
 ```
 
 <Warning>
-调用方必须根据 FSP 完整技能定义中的参数、状态、约束和安全围栏构造请求，不得根据设备名称或技能摘要猜测调用参数。
+执行请求必须来自当前 FSP 设备定义和已通过的仿真结果，不得根据设备名称猜测接口或参数。
 </Warning>
 
 ## 阅读顺序
 
-1. [基础协议](/specification/base-protocol)
-2. [FSP 概述](/specification/fsp/overview)
-3. [接口定义](/specification/device-integration/overview)
-4. [设备能力](/specification/capability/overview)
-5. [实验方法](/specification/methods/overview)
+1. [协议概述](/specification/overview)
+2. [编译/解释器](/specification/engine/compiler)
+3. [仿真器](/specification/engine/simulator)
+4. [执行器](/specification/engine/executor)
+5. [FSP 概述](/specification/fsp/overview)

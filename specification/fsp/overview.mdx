@@ -3,102 +3,84 @@ title: "FSP 概述"
 description: "ALL 内部面向设备通信的函数状态协议"
 ---
 
-Function State Protocol（FSP，函数状态协议）统一描述设备公开的技能接口，并提供发现、按需披露、分类请求、异步任务和诊断语义。FSP 不要求设备采用相同的底层接口技术，也不规定设备内部代码结构。
+Function State Protocol（FSP，函数状态协议）是 ALL 内部的设备通信协议。它把不同 API、HTTP 服务或其他远程设备接口映射为统一的操作、对象和系统定义，使 ALL 语言引擎能够编译、仿真并执行设备调用。
 
-## 技能描述
+FSP 不要求设备原生实现 FSP，也不规定设备内部代码结构。设备接入时，由适配层或部署配置提供 FSP 设备定义；运行时，FSP 只负责向已配置设备下发请求并返回状态、结果和诊断。
 
-每项设备技能都是一个可调用接口。FSP 从三个维度说明同一项技能，而不是把设备能力拆成三类接口：
+## 三个维度
 
-| 维度 | 回答的问题 |
+对象、操作和系统是说明同一设备接口的三个维度，不是三类互不关联的接口。
+
+| 维度 | 说明 |
 | --- | --- |
-| 对象 | 该技能处理哪些容器，对容器形状、尺寸、材质、容积和状态有什么要求 |
-| 控制 | 该技能如何调用，参数、请求分类、前置条件、状态变化、返回值和诊断是什么 |
-| 系统 | 调用时设备必须处于什么状态，适用哪些安全围栏，完成后如何验证结果 |
+| [操作](/specification/fsp/operations) | 具体接口做什么、如何调用、参数和返回值是什么、属于哪种请求分类 |
+| [对象](/specification/fsp/objects) | 接口处理哪些容器，容器的形状、尺寸、材质、容积及状态要求是什么 |
+| [系统](/specification/fsp/system) | 接口执行时要求哪些设备状态、安全围栏、异步任务和结果验证规则 |
 
-函数式实验方法属于 ALL 的验证和执行层，不由设备作为技能接口发布。
-
-## 渐进式披露
-
-调用方只在需要时读取更详细的数据：
-
-```text
-第一级：fsp/discover
-  → 设备标识、名称、能力修订号和可用性
-
-第二级：fsp/get_capabilities(detail_level="summary")
-  → 技能标识、名称、用途、请求分类和对象摘要
-
-第三级：fsp/get_capabilities(detail_level="full", command_ids=[...])
-  → 所选技能的对象、控制、系统三个完整维度
-  → 参数 Schema、结果 Schema、约束、围栏和验证规则
-```
-
-调用方不得仅凭摘要生成执行请求。构造 `write` 或 `invoke` 请求前，必须读取目标技能的完整定义并确认能力修订号仍然有效。
+一项操作必须同时引用自身适用的对象和系统约束。例如，加液操作不是独立于容器与设备状态的函数：它必须声明目标容器、容量约束、设备可执行状态以及完成后的结果验证。
 
 ## 请求分类
 
-`read`、`write` 和 `invoke` 是请求的风险分类，不是设备仅有的三条指令。每项具体技能使用稳定 `command_id` 标识，并声明一种 `request_class`：
+`read`、`write` 和 `invoke` 是风险分类，不是三条固定指令。具体接口由稳定 `operation_id` 标识。
 
-| 分类 | 语义 | 最低约束 |
+| 分类 | 语义 | 最低要求 |
 | --- | --- | --- |
-| `read` | 读取对象、设备状态或既有结果，不改变设备状态 | 设备在线且目标可读时通常可以调用；返回值必须说明观测时间和数据新鲜度 |
-| `write` | 修改设备状态、配置或工艺参数，但不以发生物理动作作为目的 | 必须检查字段可写性、参数范围和预期修订号；完成后必须回读或取得等价确认 |
-| `invoke` | 触发移动、加热、加液、抓取等实际物理动作 | 必须强制检查前置条件、对象状态、设备状态和安全围栏；完成后必须验证实际结果 |
+| `read` | 读取对象、系统状态或既有结果 | 返回观测时间和数据新鲜度，不改变设备状态 |
+| `write` | 修改设备状态、配置或工艺参数 | 校验可写性、范围和预期修订号，完成后回读 |
+| `invoke` | 触发实际物理动作 | 下发前强制检查对象、系统和安全围栏，完成后验证物理结果 |
 
-`fsp/read`、`fsp/write` 和 `fsp/invoke` 是三类请求的协议入口。实际执行什么仍由完整技能定义中的 `command_id` 决定。
-
-## 标准交互
+## 运行时接口
 
 ```text
-fsp/discover
-  → fsp/get_capabilities（摘要）
-  → fsp/get_capabilities（所需技能详情）
-  → fsp/read | fsp/write | fsp/invoke
-  → fsp/get_task（异步时）
-  → 结果验证与诊断
+fsp/read
+fsp/write
+fsp/invoke
+fsp/get_task
+fsp/cancel_task
 ```
 
-## 底层接口无关
+`fsp/get_task` 和 `fsp/cancel_task` 属于系统运行机制，详细语义见[系统](/specification/fsp/system)。
 
-```text
-调用方
-  → FSP 服务或适配器
-      → 现有 HTTP API
-      → 厂商 SDK
-      → RPC 或消息接口
-      → 本地驱动或设备协议
+## 统一请求
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "request-1",
+  "method": "fsp/invoke",
+  "params": {
+    "device_id": "device-01",
+    "operation_id": "add_liquid",
+    "arguments": {
+      "container_id": "container-01",
+      "volume_mL": 0.5
+    },
+    "expected_system_revision": "state-21"
+  }
+}
 ```
 
-接口定义见[接口定义](/specification/device-integration/overview)。设备只需被动提供可映射的接口、状态和结果，由 FSP 服务负责形成统一技能定义并下发请求。
-
-## 协议方法
-
-| 方法 | 作用 |
+| 字段 | 作用 |
 | --- | --- |
-| `fsp/discover` | 发现设备并取得最小设备元数据 |
-| `fsp/get_capabilities` | 按摘要或完整级别读取设备技能定义 |
-| `fsp/read` | 提交读取类请求 |
-| `fsp/write` | 提交写入类请求 |
-| `fsp/invoke` | 提交物理动作类请求 |
-| `fsp/get_task` | 读取异步任务进度和结果 |
-| `fsp/cancel_task` | 请求取消可取消任务 |
-| `fsp/subscribe` | 订阅状态或任务事件 |
+| `device_id` | 指定已经配置的目标设备 |
+| `operation_id` | 指定 FSP 设备定义中的具体操作 |
+| `arguments` | 传入该操作声明的参数 |
+| `expected_system_revision` | 防止基于过期系统状态执行写入或物理动作 |
 
-## 设备要求
+## 统一响应
 
-设备不需要原生实现 FSP，也不要求重新设计已有接口。符合性检查只验证 FSP 服务可观察到的数据和行为，不检查设备内部代码组织。
-
-## 技能条目
-
-```text
-skills[]
-├── command_id
-├── name / description
-├── request_class: read | write | invoke
-├── execution_mode: sync | async
-├── object   对象维度
-├── control  控制维度
-└── system   系统维度
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "request-1",
+  "result": {
+    "result_type": "complete",
+    "value": {},
+    "system_revision": "state-22",
+    "observed_at": "2026-09-02T06:00:12Z",
+    "diagnostics": []
+  }
+}
 ```
 
-调用方必须从当前能力修订号对应的完整技能定义中取得 `command_id`、参数和约束，不得根据名称猜测未声明接口。
+`result_type` 可以是 `complete` 或 `task`。同步结果必须符合操作的返回 Schema；异步结果必须符合系统任务结构。调用方不得根据操作名称猜测未声明参数，也不得用预期状态替代实际结果。

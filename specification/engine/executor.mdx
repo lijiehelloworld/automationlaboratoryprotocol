@@ -1,0 +1,111 @@
+---
+title: "执行器"
+description: "把通过仿真的中间程序转换为 FSP 请求并核验实际结果"
+---
+
+## 职责
+
+执行器只接收通过仿真的中间程序。它在每一步下发前重新检查对象和系统状态，通过 FSP 调用设备操作，并把同步结果或系统异步任务转换为统一执行记录。
+
+```text
+已通过仿真的中间程序
+  → 运行时前置检查
+  → FSP 分类请求
+  → 同步结果或系统异步任务
+  → 结果验证与状态提交
+```
+
+## 输入
+
+```json
+{
+  "program_id": "program-001",
+  "simulation_id": "simulation-001",
+  "simulation_status": "passed",
+  "definition_revisions": {"device-01": "12"},
+  "steps": [
+    {
+      "step_id": "step-1",
+      "device_id": "device-01",
+      "operation_id": "add_liquid",
+      "request_class": "invoke",
+      "arguments": {"container_id": "container-01", "volume_mL": 0.5}
+    }
+  ],
+  "runtime_verifications": [
+    "核对实际加液量",
+    "读取目标容器执行后状态"
+  ]
+}
+```
+
+执行器必须确认 `simulation_status=passed`、设备定义修订号未变化，并重新读取强前置状态。仿真结果不能替代运行时设备事实。
+
+## 下发规则
+
+| 请求分类 | 执行器要求 |
+| --- | --- |
+| `read` | 确认目标可读；记录观测时间和数据新鲜度 |
+| `write` | 检查字段可写性、范围和预期修订号；完成后回读 |
+| `invoke` | 强制检查对象状态、设备状态和安全围栏；完成后验证物理结果 |
+
+示例 FSP 请求：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "execute-step-1",
+  "method": "fsp/invoke",
+  "params": {
+    "device_id": "device-01",
+    "operation_id": "add_liquid",
+    "arguments": {
+      "container_id": "container-01",
+      "volume_mL": 0.5
+    },
+    "expected_system_revision": "state-21"
+  }
+}
+```
+
+## 异步执行
+
+操作返回 `result_type=task` 时，执行器按[系统](/specification/fsp/system)规定读取或取消任务。任务进入 `succeeded` 之前不得提交预期状态；`failed`、`cancelled` 或 `unknown` 必须触发对象和系统状态重读。
+
+## 输出
+
+```json
+{
+  "execution_id": "execution-001",
+  "program_id": "program-001",
+  "status": "succeeded",
+  "steps": [
+    {
+      "step_id": "step-1",
+      "device_id": "device-01",
+      "operation_id": "add_liquid",
+      "status": "succeeded",
+      "task_id": "task-001",
+      "result": {
+        "actual_volume_mL": 0.5,
+        "container_status": "无盖"
+      },
+      "observed_at": "2026-09-02T06:00:12Z",
+      "diagnostics": []
+    }
+  ],
+  "committed_state": {
+    "container-01": {
+      "sample_status": "液体",
+      "sample_volume_mL": 0.5
+    }
+  }
+}
+```
+
+## 状态提交
+
+- 只有操作完成条件和运行时验证全部满足时，执行器才可提交实际状态变化。
+- 失败时不得写入预期成功状态；必须保存设备可确认的实际状态和诊断。
+- 每项结果必须关联 `program_id`、`step_id`、`device_id`、`operation_id` 和设备定义修订号。
+- 执行器不得绕过 FSP 的系统安全围栏，也不得把仿真预测当作执行证据。

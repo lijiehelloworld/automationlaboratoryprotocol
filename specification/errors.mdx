@@ -67,11 +67,11 @@ description: "协议错误、执行失败和恢复语义"
 | --- | --- |
 | `unsupported_version` | 协议版本不支持 |
 | `device_not_found` | 目标设备不存在 |
-| `capability_not_found` | 设备未声明目标技能，或完整技能缺少对象、控制、系统任一维度 |
+| `operation_not_found` | FSP 设备定义中不存在目标操作，或该操作缺少对象、操作、系统任一维度 |
 | `invalid_parameter` | 参数类型、单位或结构错误 |
 | `parameter_out_of_range` | 参数超出范围或枚举 |
-| `precondition_failed` | 技能前置状态不满足 |
-| `constraint_violation` | 控制约束或安全围栏不满足 |
+| `precondition_failed` | 操作前置状态不满足 |
+| `constraint_violation` | 操作约束或安全围栏不满足 |
 | `revision_conflict` | `expected_revision` 已过期 |
 | `stale_state` | 状态已过期，必须重新读取 |
 | `device_busy` | 设备当前不能接收新操作 |

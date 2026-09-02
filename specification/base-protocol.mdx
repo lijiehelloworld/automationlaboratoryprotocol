@@ -1,23 +1,21 @@
 ---
 title: "基础协议"
-description: "ALL 远程消息、版本、结果和统一 FSP 方法命名规范"
+description: "ALL 远程消息、结果、修订和 FSP 方法命名"
 ---
 
 ## 协议边界
 
-Automation Laboratory Language（ALL）规定调用方、实验方法服务与设备服务之间可观察的通信语义。Function State Protocol（FSP）是 ALL 内部用于设备发现、技能披露、分类请求和结果返回的设备通信协议。
-
-ALL 不规定服务端内部的驱动、队列、数据库、控制器或设备总线。现有设备可以通过适配器接入，不需要修改固件或放弃原有接口。
+ALL 规定调用方、语言引擎和 FSP 服务之间可观察的消息语义。FSP 面向已配置设备。设备可以通过适配器接入，不需要修改固件或放弃原有接口。
 
 ## 远程连接
 
-正式部署应当提供稳定的 HTTPS 端点：
+正式部署应提供稳定 HTTPS 端点：
 
 ```text
 POST https://lab.example.com/all
 ```
 
-基础版本使用 JSON-RPC 2.0 请求与响应。一个 HTTP 请求只包含一个协议请求，不使用 JSON-RPC 批处理。
+基础版本使用 JSON-RPC 2.0。一个 HTTP 请求只包含一个协议请求，不使用批处理。
 
 ## 请求消息
 
@@ -25,46 +23,40 @@ POST https://lab.example.com/all
 {
   "jsonrpc": "2.0",
   "id": "req-0001",
-  "method": "fsp/get_capabilities",
+  "method": "fsp/invoke",
   "params": {
-    "device_id": "2002186824385539",
-    "detail_level": "summary",
-    "if_revision": "11"
+    "device_id": "device-01",
+    "operation_id": "add_liquid",
+    "arguments": {"container_id": "container-01", "volume_mL": 0.5},
+    "expected_system_revision": "state-21"
   },
   "meta": {
-    "protocol_version": "2026-09-01",
+    "protocol_version": "2026-09-02",
     "caller": "laboratory-agent"
   }
 }
 ```
 
-| 字段 | 类型 | 是否必需 | 说明 |
-| --- | --- | --- | --- |
-| `jsonrpc` | `string` | 是 | 固定为 `2.0` |
-| `id` | `string` | 是 | 调用方生成的请求标识 |
-| `method` | `string` | 是 | 标准方法，必须位于 `fsp/*` 命名空间 |
-| `params` | `object` | 是 | 方法参数，没有参数时使用空对象 |
-| `meta.protocol_version` | `string` | 是 | 调用方使用的协议版本 |
-| `meta.caller` | `string` | 否 | 调用方名称，用于审计和诊断 |
+| 字段 | 必需 | 说明 |
+| --- | --- | --- |
+| `jsonrpc` | 是 | 固定为 `2.0` |
+| `id` | 是 | 调用方生成的请求标识 |
+| `method` | 是 | 标准方法，位于 `fsp/*` 命名空间 |
+| `params` | 是 | 方法参数，没有参数时使用空对象 |
+| `meta.protocol_version` | 是 | 调用方使用的协议版本 |
+| `meta.caller` | 否 | 调用方名称，用于审计和诊断 |
 
-## 统一方法命名空间
-
-标准方法统一位于 `fsp/*`：
+## FSP 方法
 
 ```text
-fsp/discover
-fsp/get_capabilities
 fsp/read
 fsp/write
 fsp/invoke
 fsp/get_task
 fsp/cancel_task
-fsp/subscribe
 ```
 
-对象、控制和系统是每项技能的三个描述维度，不各自形成顶层方法命名空间。`read`、`write` 和 `invoke` 是请求分类，不是设备全部指令的固定清单；每个设备可以声明多条具体技能，并以 `command_id` 区分。
-
-`fsp/get_capabilities` 支持渐进式披露。调用方先读取技能摘要，再按 `command_ids` 获取准备使用的完整技能定义；不得仅凭摘要构造写入或物理动作请求。
+对象、操作和系统是设备接口的三个说明维度，不各自形成顶层命名空间。`read`、`write` 和 `invoke` 是风险分类；具体接口始终由 `operation_id` 区分。任务方法属于系统运行机制。
 
 ## 成功响应
 
@@ -75,6 +67,8 @@ fsp/subscribe
   "result": {
     "result_type": "complete",
     "value": {},
+    "system_revision": "state-22",
+    "observed_at": "2026-09-02T06:00:12Z",
     "diagnostics": []
   }
 }
@@ -85,10 +79,9 @@ fsp/subscribe
 | 值 | 说明 |
 | --- | --- |
 | `complete` | 当前请求已经完成 |
-| `not_modified` | 请求携带的修订号仍然有效 |
-| `task` | 已转为异步任务 |
+| `task` | 请求已转为系统异步任务 |
 
-## 异步受理响应
+## 异步响应
 
 ```json
 {
@@ -97,19 +90,20 @@ fsp/subscribe
   "result": {
     "result_type": "task",
     "task": {
-      "task_id": "opaque-task-id",
-      "status": "queued"
+      "task_id": "task-001",
+      "status": "queued",
+      "cancellable": true
     },
     "diagnostics": []
   }
 }
 ```
 
-`task_id` 是 FSP 运行时标识，不得被当作研究对象标识或能力版本。
+任务状态和取消语义见[系统](/specification/fsp/system)。
 
 ## 协议错误
 
-请求未进入设备执行前发生的协议错误使用 JSON-RPC `error`：
+请求进入设备执行前发生的协议错误使用 JSON-RPC `error`。设备执行已经开始后的失败通过普通 `result` 返回，保留实际任务状态、设备状态和诊断。
 
 ```json
 {
@@ -122,8 +116,8 @@ fsp/subscribe
       "diagnostics": [
         {
           "code": "invalid_parameter",
-          "path": "params.device_id",
-          "message": "device_id 不能为空"
+          "path": "params.arguments.volume_mL",
+          "message": "volume_mL 超出操作声明范围"
         }
       ]
     }
@@ -131,26 +125,10 @@ fsp/subscribe
 }
 ```
 
-设备执行已经开始后，失败结果应当通过普通 `result` 返回，并保留任务状态、实际状态和诊断，不能伪装成未执行的协议错误。
+## 修订号与单位
 
-## 修订号
-
-以下数据必须携带修订号：
-
-- 设备技能定义；
-- 研究对象当前状态；
-- 合格设备技能库记录；
-- 设备绑定的执行计划。
-
-调用方可以使用 `if_revision` 避免重复读取未变化的数据。改变状态的请求应当携带 `expected_revision`；修订号不一致时，服务端不得按过期状态继续执行。
-
-## 日期与单位
-
-- 时间使用 RFC 3339 字符串；
-- 数值和单位分字段表达；
-- 参数单位必须与能力描述一致；
-- 未知值使用 `null`，不得用 `0` 或空字符串冒充测量值。
-
-## 规范用语
-
-本规范使用“必须”“不得”“应当”“不应当”“可以”表达约束强度。
+- FSP 设备定义、中间程序、对象状态和系统状态必须携带修订号；
+- 改变状态的请求应携带预期系统修订号；冲突时不得继续执行；
+- 时间使用 RFC 3339；
+- 数值和单位分字段表达，或使用设备定义中固定的明确单位；
+- 未知值使用 `null`，不得用 `0` 或空字符串冒充。

@@ -46,11 +46,9 @@
             "group": "FSP 函数状态协议",
             "pages": [
               "specification/fsp/overview",
-              "specification/fsp/capabilities",
-              "specification/fsp/objects",
               "specification/fsp/operations",
-              "specification/fsp/system",
-              "specification/fsp/async-tasks"
+              "specification/fsp/objects",
+              "specification/fsp/system"
             ]
           },
           {
@@ -60,20 +58,11 @@
             ]
           },
           {
-            "group": "设备能力",
+            "group": "ALL 语言引擎",
             "pages": [
-              "specification/capability/overview",
-              "specification/capability/quality",
-              "specification/capability/library"
-            ]
-          },
-          {
-            "group": "实验方法",
-            "pages": [
-              "specification/methods/overview",
-              "specification/methods/validation",
-              "specification/methods/binding",
-              "specification/methods/execution"
+              "specification/engine/compiler",
+              "specification/engine/simulator",
+              "specification/engine/executor"
             ]
           },
           {

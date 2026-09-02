@@ -1,34 +1,68 @@
 ---
 title: "系统"
-description: "设备技能所需的运行状态、安全围栏和结果验证"
+description: "设备状态、安全围栏、异步任务和结果验证"
 ---
 
 ## 作用
 
-系统维度说明某项技能可执行时的设备条件，包括设备状态、可用性、安全围栏和结果验证要求。设备级状态可以被多项技能引用，但不能脱离具体技能替代其前置条件。
+系统维度描述设备运行条件和运行时状态，包括可用性、安全围栏、状态修订、异步任务以及结果验证。设备级状态可以被多项操作引用，但每项操作仍须声明自身的前置条件。
 
-## 技能系统维度
+## 系统定义
 
 ```json
 {
-  "command_id": "dispense",
+  "device_id": "device-01",
+  "system": {
+    "states": ["offline", "idle", "busy", "paused", "fault", "maintenance", "unknown"],
+    "current_state": "idle",
+    "available": true,
+    "revision": "state-21",
+    "safety_fences": [
+      "fault 或 maintenance 状态禁止执行 invoke",
+      "busy 状态不得创建冲突任务"
+    ],
+    "task_support": {
+      "enabled": true,
+      "statuses": ["queued", "running", "succeeded", "failed", "cancelled", "unknown"],
+      "cancellation_supported": true
+    },
+    "observed_at": "2026-09-02T06:00:00Z"
+  }
+}
+```
+
+| 字段 | 作用 |
+| --- | --- |
+| `states[]` | 声明设备能够区分的系统状态 |
+| `current_state` | 给出当前可确认状态 |
+| `available` | 表示当前是否接受请求 |
+| `revision` | 防止写入或调用基于过期状态执行 |
+| `safety_fences[]` | 给出设备服务必须执行的保护规则 |
+| `task_support` | 声明长任务的状态和取消支持 |
+| `observed_at` | 给出状态观测时间 |
+
+## 操作中的系统约束
+
+```json
+{
+  "operation_id": "add_liquid",
   "request_class": "invoke",
   "system": {
-    "required_device_states": ["idle"],
-    "forbidden_device_states": ["offline", "fault", "maintenance"],
+    "required_states": ["idle"],
+    "forbidden_states": ["offline", "fault", "maintenance"],
     "safety_fences": [
       "目标容器剩余容量必须大于或等于加液体积",
-      "单次加液量不得超过技能声明上限"
+      "单次加液量不得超过操作声明上限"
     ],
     "result_verification": [
-      "动作任务必须进入 completed 状态",
-      "返回实际加液体积和目标容器执行后状态"
+      "任务必须进入 succeeded 状态",
+      "返回实际加液量和目标容器执行后状态"
     ]
   }
 }
 ```
 
-系统维度只描述 `dispense` 技能的执行条件。另一项技能即使作用于同一设备，也必须声明自身适用的状态、围栏和结果验证规则。
+安全围栏必须在 `write` 或 `invoke` 请求进入设备前判断。`invoke` 还必须在动作完成后执行结果验证。上层程序或自然语言指令不能绕过这些规则。
 
 ## 状态读取
 
@@ -38,18 +72,12 @@ description: "设备技能所需的运行状态、安全围栏和结果验证"
   "id": "read-system-1",
   "method": "fsp/read",
   "params": {
-    "device_id": "2002186824385539",
-    "command_id": "read_device_state",
+    "device_id": "device-01",
+    "operation_id": "read_system_state",
     "arguments": {}
   }
 }
 ```
-
-| 输入字段 | 类型 | 作用 |
-| --- | --- | --- |
-| `device_id` | `string` | 指定要读取的设备 |
-| `command_id` | `string` | 指定完整技能定义中 `request_class=read` 的设备状态读取技能 |
-| `arguments` | `object` | 提供该读取技能声明的参数；没有参数时使用空对象 |
 
 ```json
 {
@@ -58,46 +86,77 @@ description: "设备技能所需的运行状态、安全围栏和结果验证"
     "state": "idle",
     "available": true,
     "current_task": null,
-    "capability_revision": "12",
-    "observed_at": "2026-09-01T12:00:00Z"
+    "revision": "state-21",
+    "observed_at": "2026-09-02T06:00:00Z"
   },
   "diagnostics": []
 }
 ```
 
-| 输出字段 | 类型 | 作用 |
-| --- | --- | --- |
-| `state` | `string` | 表示离线、空闲、忙碌、暂停、故障或维护状态 |
-| `available` | `boolean` | 表示设备当前是否接受操作 |
-| `current_task` | `string` 或 `null` | 关联当前任务；空闲时为 `null` |
-| `capability_revision` | `string` | 表示当前状态对应的能力版本 |
-| `observed_at` | `string` | 表示状态观测时间 |
-| `diagnostics[]` | `array[object]` | 提供状态异常或读取问题的结构化诊断 |
+## 异步任务
 
-## 状态值
+不能在一次请求内可靠完成的操作可以返回系统任务。异步是执行方式，不改变操作的请求分类、参数、对象约束和结果定义。
 
-系统至少应当区分：
+### 创建结果
 
-```text
-offline
-idle
-busy
-paused
-fault
-maintenance
+```json
+{
+  "result_type": "task",
+  "task": {
+    "task_id": "task-001",
+    "device_id": "device-01",
+    "operation_id": "add_liquid",
+    "request_class": "invoke",
+    "status": "queued",
+    "accepted_at": "2026-09-02T06:00:00Z",
+    "cancellable": true
+  },
+  "diagnostics": []
+}
 ```
 
-设备无法准确判断时，可以使用 `unknown` 并返回诊断。
+### 查询任务
 
-## 安全围栏
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "task-read-1",
+  "method": "fsp/get_task",
+  "params": {
+    "device_id": "device-01",
+    "task_id": "task-001"
+  }
+}
+```
 
-安全围栏用于表达设备服务必须执行的保护规则，例如：
+```json
+{
+  "result_type": "complete",
+  "value": {
+    "task_id": "task-001",
+    "device_id": "device-01",
+    "operation_id": "add_liquid",
+    "status": "succeeded",
+    "accepted_at": "2026-09-02T06:00:00Z",
+    "started_at": "2026-09-02T06:00:01Z",
+    "completed_at": "2026-09-02T06:00:12Z",
+    "cancellable": false,
+    "result": {
+      "actual_volume_mL": 0.5,
+      "container_status": "无盖"
+    }
+  },
+  "diagnostics": []
+}
+```
 
-- 设备忙碌时是否允许新任务；
-- 参数是否超出物理能力；
-- 当前状态是否允许目标操作；
-- 操作是否与现有任务冲突；
-- 是否需要人工确认；
-- 故障或急停状态是否禁止执行。
+### 取消任务
 
-安全围栏必须在 `write` 或 `invoke` 请求进入设备前判断。`invoke` 类技能还必须在动作完成后按系统维度中的 `result_verification` 验证实际结果。自然语言实验方法、函数式技能或调用方提示不能绕过安全围栏。
+`fsp/cancel_task` 表示请求取消，不表示设备已经停止。服务端必须返回实际任务状态；不可取消时返回结构化诊断。
+
+### 状态提交
+
+- `succeeded`：完成条件和结果验证全部满足后，才能提交实际状态变化；
+- `failed`：不得提交预期成功状态，必须返回可确认的实际状态；
+- `cancelled`：返回取消后可确认的对象和系统状态；
+- `unknown`：不得假定成功，执行器必须重新读取相关状态。
