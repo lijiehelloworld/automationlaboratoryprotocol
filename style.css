@@ -1,0 +1,6 @@
+#footer a[href="/"]:not(.select-none) {
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
