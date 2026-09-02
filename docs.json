@@ -108,9 +108,12 @@
     "links": []
   },
   "footer": {
-    "socials": {
-      "github": "https://github.com/lijiehelloworld/automationlaboratoryprotocol"
-    }
+    "links": [
+      {
+        "label": "中国科学技术大学·科学智能物质创制中心",
+        "href": "/"
+      }
+    ]
   },
   "search": {
     "prompt": "搜索 ALL 文档..."
