@@ -60,7 +60,7 @@
             ]
           },
           {
-            "group": "技能提取",
+            "group": "设备能力",
             "pages": [
               "specification/capability/overview",
               "specification/capability/quality",
@@ -68,7 +68,7 @@
             ]
           },
           {
-            "group": "验证和执行",
+            "group": "实验方法",
             "pages": [
               "specification/methods/overview",
               "specification/methods/validation",
