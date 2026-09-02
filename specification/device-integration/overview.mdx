@@ -43,7 +43,7 @@ description: "设备能力从对象、控制和系统三个方面完整说明"
 
 ### 对象信息
 
-每个 `objects[]` 项必须至少包含 `object_type_id`、`variant_id`、`name`、`object_kind`、`properties` 和 `states`。容器的 `object_kind` 为 `container`；`properties` 必须按统一结构说明形状、长宽高、内外径、材质、标称容积、允许工作容积以及适用时的孔数和孔径，`states` 列出设备能够读取或改变的状态及允许值。完整目录和字段定义见[对象与容器](/specification/fsp/objects)。
+每个 `objects[]` 项必须至少包含 `object_type_id`、`variant_id`、`name`、`object_kind`、`properties` 和 `states`。容器的 `object_kind` 为 `container`；`properties` 必须按统一结构说明形状、长宽高、内外径、材质、标称容积、允许工作容积以及适用时的孔数和孔径，`states` 列出设备能够读取或改变的状态及允许值。完整目录和字段定义见[对象](/specification/fsp/objects)。
 
 例如，`container_status: ["有盖", "无盖"]` 表示设备能区分这两种容器状态，也为操作的前置条件提供可验证的依据。
 

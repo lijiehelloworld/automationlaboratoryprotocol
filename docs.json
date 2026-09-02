@@ -68,12 +68,6 @@
             ]
           },
           {
-            "group": "研究对象与状态",
-            "pages": [
-              "specification/research/objects"
-            ]
-          },
-          {
             "group": "函数式实验方法",
             "pages": [
               "specification/methods/overview",
