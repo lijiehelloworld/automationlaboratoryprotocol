@@ -22,40 +22,255 @@ FSP 三段请求
 | 控制 | 操作标识、参数、类型、范围、枚举和操作前置条件 | 是否受理、执行状态、实际参数、结果和诊断 |
 | 系统 | 设备预期状态、系统修订号、安全围栏、执行模式 | 当前设备状态、安全检查、任务信息和注意事项 |
 
-## 被动加液接口示例
+## 加液接口示例
 
-以下为传输无关的接口结构，不定义 URL、命令名或工具名。实现可将其放入 HTTP 请求体、CLI 输入文件、MCP 工具输入或 SDK 参数对象。
+FSP 不规定 URL、工具名或命令名。以下三种形式仅说明同一个“加液”操作如何通过 MCP、HTTP API 与 CLI 承载；三种实现的语义相同，均以对象、控制、系统三段字段表达输入和输出。
 
-### 请求
+### MCP 形式
+
+#### 接口文档
+
+| 项目 | 示例内容 | 说明 |
+| --- | --- | --- |
+| 工具名称 | `add_liquid` | 设备服务器对外注册的 MCP 工具名称；名称可由实现定义 |
+| 调用方法 | `tools/call` | MCP 客户端通过标准工具调用方法调用该工具 |
+| 输入位置 | `params.arguments` | 参数对象中包含 `object`、`control`、`system` 三段 |
+| 对象输入 | 目标容器、类型、执行前状态、剩余容量 | 例如目标为 50 mL 离心管、无盖、剩余容量 45 mL |
+| 控制输入 | 来源容器、加液体积、控制前置条件 | 例如来源为 `source-01`，体积为 `0.5 mL` |
+| 系统输入 | 设备预期状态、修订号、安全围栏、执行模式 | 例如设备空闲、无冲突任务、采用异步执行 |
+| 结果位置 | `result.structuredContent` | 返回对象实际变化、控制执行结果与系统事实；`content` 可提供人可读摘要 |
+
+#### 请求示例
 
 ```json
 {
-  "operation_id": "add_liquid",
+  "jsonrpc": "2.0",
+  "id": "request-001",
+  "method": "tools/call",
+  "params": {
+    "name": "add_liquid",
+    "arguments": {
+      "object": {
+        "containers": [
+          {
+            "container_id": "container-01",
+            "object_type_id": "container.centrifuge_tube.50ml",
+            "before_state": {
+              "container_status": "无盖",
+              "sample_status": "空",
+              "sample_volume_mL": 0
+            },
+            "capacity": {"remaining_volume_mL": 45}
+          }
+        ]
+      },
+      "control": {
+        "operation_id": "add_liquid",
+        "parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
+        "preconditions": ["加液量位于操作声明范围内"]
+      },
+      "system": {
+        "expected_device_state": "idle",
+        "expected_system_revision": "system-21",
+        "execution_mode": "async",
+        "preconditions": ["设备无故障", "无冲突任务"],
+        "safety_fences": ["目标容器容量足够", "供液容器可用"]
+      }
+    }
+  }
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "request-001",
+  "result": {
+    "content": [
+      {"type": "text", "text": "加液任务已受理，等待设备执行。"}
+    ],
+    "structuredContent": {
+      "object": {
+        "changes": [
+          {
+            "container_id": "container-01",
+            "before_state": {"container_status": "无盖", "sample_status": "空", "sample_volume_mL": 0},
+            "after_state": null,
+            "revision": "object-21"
+          }
+        ]
+      },
+      "control": {
+        "operation_id": "add_liquid",
+        "status": "accepted",
+        "actual_parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
+        "diagnostics": []
+      },
+      "system": {
+        "device_state": "busy",
+        "system_revision": "system-22",
+        "safety_checks": [{"rule": "目标容器容量足够", "passed": true}],
+        "task": {"task_id": "task-001", "status": "queued", "cancellable": true},
+        "notices": ["任务完成前不得移动目标容器"]
+      }
+    },
+    "isError": false
+  }
+}
+```
+
+### HTTP API 形式
+
+#### 接口文档
+
+| 项目 | 示例内容 | 说明 |
+| --- | --- | --- |
+| 请求方法 | `POST` | 创建一次加液操作请求；具体方法可由实现定义 |
+| 示例路径 | `/api/v1/devices/{device_id}/operations/add-liquid` | 仅为 HTTP 实现示例，不属于 FSP 固定路径 |
+| 路径参数 | `device_id` | 指定执行该操作的设备，例如 `device-01` |
+| 请求头 | `Content-Type: application/json`、`Idempotency-Key` | 前者声明 JSON；后者用于避免网络重试导致重复物理动作 |
+| 请求体 | `object`、`control`、`system` | 与 MCP 工具参数中的三段字段一致 |
+| 成功状态码 | `202 Accepted` | 异步任务已受理；同步实现也可在完成后返回 `200 OK` |
+| 响应体 | 对象变化、控制状态、系统事实 | 与 MCP 的 `structuredContent` 使用相同三段语义 |
+
+#### 请求示例
+
+```http
+POST /api/v1/devices/device-01/operations/add-liquid HTTP/1.1
+Content-Type: application/json
+Idempotency-Key: add-liquid-20260902-001
+
+{
   "object": {
     "containers": [
       {
         "container_id": "container-01",
-        "object_type_id": "container.centrifuge_tube",
-        "before_state": {"container_status": "无盖", "sample_status": "空", "sample_volume_mL": 0},
+        "object_type_id": "container.centrifuge_tube.50ml",
+        "before_state": {
+          "container_status": "无盖",
+          "sample_status": "空",
+          "sample_volume_mL": 0
+        },
         "capacity": {"remaining_volume_mL": 45}
       }
     ]
   },
   "control": {
+    "operation_id": "add_liquid",
     "parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
-    "preconditions": ["加液体积必须位于声明范围", "容器处于无盖状态"]
+    "preconditions": ["加液量位于操作声明范围内"]
   },
   "system": {
     "expected_device_state": "idle",
     "expected_system_revision": "system-21",
     "execution_mode": "async",
     "preconditions": ["设备无故障", "无冲突任务"],
-    "safety_fences": ["容器容量足够", "供液容器可用"]
+    "safety_fences": ["目标容器容量足够", "供液容器可用"]
   }
 }
 ```
 
-### 响应
+#### 响应示例
+
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+
+{
+  "object": {
+    "changes": [
+      {
+        "container_id": "container-01",
+        "before_state": {"container_status": "无盖", "sample_status": "空", "sample_volume_mL": 0},
+        "after_state": null,
+        "revision": "object-21"
+      }
+    ]
+  },
+  "control": {
+    "operation_id": "add_liquid",
+    "status": "accepted",
+    "actual_parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
+    "diagnostics": []
+  },
+  "system": {
+    "device_state": "busy",
+    "system_revision": "system-22",
+    "safety_checks": [{"rule": "目标容器容量足够", "passed": true}],
+    "task": {"task_id": "task-001", "status": "queued", "cancellable": true},
+    "notices": ["任务完成前不得移动目标容器"]
+  }
+}
+```
+
+### CLI 形式
+
+#### 接口文档
+
+| 项目 | 示例内容 | 说明 |
+| --- | --- | --- |
+| 命令 | `lab-device add-liquid` | 厂商或适配层提供的命令行程序；命令名可由实现定义 |
+| 输入方式 | `--input add-liquid-request.json` | 输入文件使用 JSON，包含对象、控制、系统三段字段 |
+| 输出方式 | `--output add-liquid-result.json` | 输出文件保存对象变化、控制结果与系统状态；标准输出可显示摘要 |
+| 设备选择 | `--device device-01` | 指定执行操作的设备 |
+| 退出码 | `0`、非 `0` | `0` 表示命令已完成或任务已受理；非零表示命令本身未能完成，不代替三段诊断结果 |
+| 异步结果 | 输出中的 `system.task` | 命令受理异步任务后返回任务标识；查询和取消命令由实现定义 |
+
+#### 请求示例
+
+```bash
+lab-device add-liquid \
+  --device device-01 \
+  --input add-liquid-request.json \
+  --output add-liquid-result.json
+```
+
+`add-liquid-request.json`：
+
+```json
+{
+  "object": {
+    "containers": [
+      {
+        "container_id": "container-01",
+        "object_type_id": "container.centrifuge_tube.50ml",
+        "before_state": {
+          "container_status": "无盖",
+          "sample_status": "空",
+          "sample_volume_mL": 0
+        },
+        "capacity": {"remaining_volume_mL": 45}
+      }
+    ]
+  },
+  "control": {
+    "operation_id": "add_liquid",
+    "parameters": {"source_container_id": "source-01", "volume_mL": 0.5},
+    "preconditions": ["加液量位于操作声明范围内"]
+  },
+  "system": {
+    "expected_device_state": "idle",
+    "expected_system_revision": "system-21",
+    "execution_mode": "async",
+    "preconditions": ["设备无故障", "无冲突任务"],
+    "safety_fences": ["目标容器容量足够", "供液容器可用"]
+  }
+}
+```
+
+#### 响应示例
+
+标准输出可显示：
+
+```text
+任务已受理：task-001
+设备状态：busy
+结果文件：add-liquid-result.json
+```
+
+`add-liquid-result.json`：
 
 ```json
 {
@@ -78,14 +293,14 @@ FSP 三段请求
   "system": {
     "device_state": "busy",
     "system_revision": "system-22",
-    "safety_checks": [{"rule": "容器容量足够", "passed": true}],
+    "safety_checks": [{"rule": "目标容器容量足够", "passed": true}],
     "task": {"task_id": "task-001", "status": "queued", "cancellable": true},
     "notices": ["任务完成前不得移动目标容器"]
   }
 }
 ```
 
-`after_state` 仅在设备完成并确认操作后填写实际值。任务完成、失败或取消后，设备必须返回相同三段结构，说明容器当前状态、控制执行情况和系统状态。
+无论采用哪一种承载方式，`after_state` 仅在设备完成并确认操作后填写实际值。任务完成、失败或取消后，设备都应返回相同三段结构，说明容器当前状态、控制执行情况和系统状态。
 
 ## 最低要求
 
