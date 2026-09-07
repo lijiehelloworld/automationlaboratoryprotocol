@@ -1,8 +1,8 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Automation Laboratory Language",
-  "description": "Automation Laboratory Language（ALL，自动化实验室语言）中文规范",
+  "name": "AI-native Laboratory Language",
+  "description": "AI-native Laboratory Language（ALL，AI 原生实验室语言）中文规范",
   "logo": "/images/all-logo.svg",
   "colors": {
     "primary": "#155EEF",
