@@ -4,6 +4,8 @@ AI-native Laboratory Language（ALL，AI 原生实验室语言）规范文档。
 
 ALL 语言引擎由编译/解释器、仿真器和执行器组成。FSP 服务通过动作契约、能力门控和适配器调用设备；底层设备接口从操作、对象和系统三个维度表达请求与结果。HTTP、CLI、MCP、RPC 和厂商 SDK 均可作为承载方式。
 
+FSP 三部分的可运行示例位于 GitCode 的 [`examples/fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)，对应测试位于 [`tests/test_fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/tests/test_fsp_three_parts.py)。Mintlify 文档只保留用于解释流程的伪代码。
+
 ## 本地预览
 
 安装 Node.js 20 或更高版本，然后在仓库根目录运行：

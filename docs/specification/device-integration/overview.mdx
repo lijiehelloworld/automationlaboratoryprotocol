@@ -5,7 +5,7 @@ description: "展示适配器如何把 FSP 请求映射到现有设备接口。"
 
 设备可以继续使用原有的 HTTP API、CLI、MCP 工具、SDK、RPC 或驱动。FSP 服务中的适配器按预先写好的规则，把已经通过动作契约和能力门控的请求转成设备命令，再把设备结果转回来。适配器不负责理解实验目标，也不能临时猜出设备命令。
 
-具体代码见 [适配器](/docs/specification/fsp/adapter)：用同一个加液例子说明动作怎么定义、执行前怎么检查、设备命令怎么转换。
+流程伪代码见[适配器](/docs/specification/fsp/adapter)：用同一个加液例子说明动作怎么定义、执行前怎么检查、设备命令怎么转换。完整实现见 [GitCode 示例源码](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)。
 
 ## 各部分负责什么
 

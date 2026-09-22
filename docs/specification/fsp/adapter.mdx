@@ -1,11 +1,15 @@
 ---
 title: "适配器"
-description: "用可运行的 Python 示例说明适配器怎样连接动作契约、能力门控和设备驱动。"
+description: "用伪代码说明适配器怎样连接动作契约、能力门控和设备驱动。"
 ---
 
-适配器是 FSP 服务中贴近具体设备的一层。它接收已经通过动作契约和能力门控的请求，调用驱动，并把设备返回值解释为上层能理解的结果。
+适配器是 FSP 服务中贴近具体设备的一层。它接收已经通过动作契约和能力门控的请求，调用驱动，并把设备返回值解释成上层能理解的结果。
 
-本页用同一个加液例子把 FSP 服务的三部分接起来：
+本页用同一个加液例子说明三部分怎样协作。页面中的代码都是伪代码，用来表达流程，不限定编程语言。完整的可运行 Python 示例和测试放在 GitCode 源仓库中。
+
+<Card title="查看 GitCode 可运行示例" icon="code" href="https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py">
+  查看动作契约、能力门控、适配器和模拟驱动的完整实现。
+</Card>
 
 | 部分 | 要回答的问题 | 加液例子 |
 | --- | --- | --- |
@@ -40,61 +44,27 @@ description: "用可运行的 Python 示例说明适配器怎样连接动作契�
 
 这些数字只是教学例子，不代表真实设备规格。不同设备可以采用更严格的范围，但不能偷偷改变单位或降低完成要求。
 
-### 用代码保存同一份定义
+### 契约检查伪代码
 
-以下示例只用 Python 标准库。按顺序复制本页所有 Python 代码块，可组成一个可运行文件。参数检查是这个固定例子的检查函数，不是完整 JSON Schema 验证器。
+```text
+动作契约 add_liquid 版本 1：
+  所需能力 = liquid_transfer
+  数量范围 = 0.05 至 0.8 mL
+  数量分辨率 = 0.001 mL
+  完成误差 = 不超过 0.005 mL
 
-```python
-from dataclasses import dataclass, field
-from decimal import Decimal
+检查动作请求：
+  要求动作名称、契约版本和参数字段完整
+  要求动作名称为 add_liquid
+  要求契约版本为 1
+  要求 volume_mL 是有限数字并符合范围和分辨率
+  返回规范化后的加液量
 
-
-class Rejected(ValueError):
-    """动作尚未下发，调用方可以根据错误码处理。"""
-
-
-def require(condition, code):
-    if not condition:
-        raise Rejected(code)
-
-
-@dataclass(frozen=True)
-class ActionSpec:
-    operation_id: str = "add_liquid"
-    contract_version: str = "1"
-    required_capability: str = "liquid_transfer"
-    minimum_ml: Decimal = Decimal("0.05")
-    maximum_ml: Decimal = Decimal("0.8")
-    tolerance_ml: Decimal = Decimal("0.005")
-
-    def check_operation(self, operation):
-        require(type(operation) is dict, "invalid_parameter")
-        require(set(operation) == {"operation_id", "contract_version", "parameters"},
-                "invalid_parameter")
-        require(operation["operation_id"] == self.operation_id, "invalid_operation")
-        require(operation["contract_version"] == self.contract_version,
-                "unsupported_version")
-        parameters = operation["parameters"]
-        require(type(parameters) is dict and set(parameters) == {"volume_mL"},
-                "invalid_parameter")
-        value = parameters["volume_mL"]
-        require(type(value) in (int, float), "invalid_parameter")
-        volume = Decimal(str(value))
-        require(volume.is_finite(), "invalid_parameter")
-        require(self.minimum_ml <= volume <= self.maximum_ml,
-                "parameter_out_of_range")
-        require(volume * 1000 == (volume * 1000).to_integral_value(),
-                "invalid_parameter")
-        return volume
-
-    def completed(self, requested_ml, actual_ml):
-        return abs(actual_ml - requested_ml) <= self.tolerance_ml
-
-
-ADD_LIQUID = ActionSpec()
+判断完成：
+  只有实际加液量存在，且与请求量的差不超过允许误差，才算完成
 ```
 
-这里把动作定义保存在 `ADD_LIQUID` 中。参数检查、设备绑定和结果判断都引用它，不在每个适配器里另抄一份范围和误差。
+参数检查、设备绑定和结果判断都引用同一份动作契约，不能在每个适配器里另抄一份范围和误差。
 
 本例的来源和目标由对象列表中的 `source`、`target` 角色确定，所以参数中不重复填写来源编号。若接口同时提供两处容器编号，必须检查它们一致。
 
@@ -109,54 +79,25 @@ ADD_LIQUID = ActionSpec()
 
 前两项通常来自设备定义和程序注册。配置是否完成来自部署检查。设备是否忙、容器剩余多少液体，则要在执行前确认。静态说明或 Function Skill 不能代替这些现场检查。
 
-### 分别保存能力与当前状态
+### 门控伪代码
 
-```python
-@dataclass
-class Device:
-    device_id: str
-    capabilities: set[str] = field(default_factory=set)
-    ready: bool = False
-    busy: bool = False
-    needs_review: bool = False
+```text
+检查本次调用：
+  要求服务端权限检查已经通过
+  要求设备声明 liquid_transfer 能力
+  要求目标设备、动作名称和契约版本存在唯一实现
+  要求设备配置完成、在线、空闲且不处于待核实状态
+  要求来源和目标角色正确，且对象版本没有变化
+  要求来源液量足够、目标容器已打开且容量足够
 
-
-@dataclass
-class Container:
-    container_id: str
-    role: str
-    revision: str
-    volume_ml: Decimal | None
-    capacity_ml: Decimal
-    is_open: bool = True
-
-
-def check_gate(spec, device, implemented, allowed, requested_ml, objects, expected):
-    require(allowed, "authorization_denied")
-    require(spec.required_capability in device.capabilities, "capability_missing")
-    require(implemented, "implementation_missing")
-    require(device.ready, "action_not_ready")
-    require(not device.busy, "resource_busy")
-    require(not device.needs_review, "result_unknown")
-    require(set(objects) == {"source", "target"}, "invalid_parameter")
-    require(type(expected) is dict and set(expected) == {"source", "target"},
-            "invalid_parameter")
-    for role, container in objects.items():
-        require(container.role == role, "object_state_conflict")
-        require(type(expected[role]) is str, "invalid_parameter")
-        require(expected[role] == container.revision, "revision_conflict")
-        require(container.volume_ml is not None, "object_state_conflict")
-    source, target = objects["source"], objects["target"]
-    require(source.container_id != target.container_id, "object_state_conflict")
-    require(target.is_open, "object_state_conflict")
-    require(source.volume_ml >= requested_ml, "capacity_insufficient")
-    require(target.volume_ml + requested_ml <= target.capacity_ml,
-            "capacity_insufficient")
+任一条件不满足：
+  返回具体拒绝原因
+  不发送任何设备命令
 ```
 
-`allowed` 必须来自服务端已经完成的权限检查，不能直接相信客户端传来的布尔值。`objects` 是服务端持有的当前容器记录，`expected` 才是调用方提供的预期版本。正式系统还要检查状态读取时间、设备版本及其他安全限制。
+权限结果必须来自服务端检查，不能直接相信客户端传来的布尔值。对象状态应来自服务端持有的当前记录，调用方只提供预期版本。正式系统还要检查状态读取时间、设备版本及其他安全限制。
 
-这里的函数只判断能不能执行，不发送设备命令。检查失败就抛出错误，适配器不应被调用。`capability_missing` 是本示例使用的扩展错误码，含义是硬件缺少所需能力。
+能力门控只判断能不能执行，不发送设备命令。检查失败时，适配器不应被调用。
 
 ## 3. 适配器：只负责这台设备怎么做
 
@@ -171,145 +112,71 @@ def check_gate(spec, device, implemented, allowed, requested_ml, objects, expect
 
 驱动负责具体通信。适配器可以调用串口、HTTP 或厂商 SDK 驱动，但不会因为调用方式不同，就改变 `add_liquid` 的含义。
 
-### 用模拟驱动看清单位转换与结果读取
+### 适配器伪代码
 
-下面的 `dose_ul` 是虚构的模拟方法，不是任何厂商的实际协议。它故意少加 2 μL。打开 `lose_reply` 后，模拟“液体已经加了，但回执丢失”。
-
-```python
-class SimulatedDriver:
-    def __init__(self, lose_reply=False):
-        self.calls = 0
-        self.lose_reply = lose_reply
-        self.source_ul = 10000
-        self.target_ul = 0
-
-    def dose_ul(self, requested_ul):
-        self.calls += 1
-        delivered_ul = requested_ul - 2
-        self.source_ul -= delivered_ul
-        self.target_ul += delivered_ul
-        if self.lose_reply:
-            raise TimeoutError("模拟动作后回执丢失")
-        return {"ack": True, "stopped": True, "delivered_ul": delivered_ul}
-
-
-class LiquidAdapter:
-    def __init__(self, device_id, spec, driver):
-        self.device_id = device_id
-        self.spec = spec
-        self.driver = driver
-
-    def execute(self, volume_ml):
-        # 本例的动作定义只允许整微升，因此这里不会丢失小数。
-        reply = self.driver.dose_ul(int(volume_ml * 1000))
-        if reply.get("stopped") is not True:
-            raise RuntimeError("还没有确认设备停止")
-        actual_ul = reply.get("delivered_ul")
-        if type(actual_ul) is not int or actual_ul < 0:
-            raise RuntimeError("缺少有效的实际加液量")
-        return Decimal(actual_ul) / 1000
+```text
+执行加液：
+  将请求量从 mL 转成驱动需要的 μL
+  调用绑定到当前设备的加液驱动
+  检查设备是否已经停止
+  读取驱动报告的实际加液量
+  如果停止状态或实际量无法确认，返回结果未知
+  将实际量转回 mL 并交给动作契约判断
 ```
 
-适配器返回的是驱动报告的量，不是请求量。只有 ACK、没有停止确认或实际量时，不能返回成功。这个例子会交给上层标为未知；真实设备也可以继续轮询，但不能重新发出加液命令。
+适配器返回的是驱动报告的量，不是请求量。只有 ACK、没有停止确认或实际量时，不能返回成功。真实设备可以继续查询同一任务，但不能因为回执丢失就重新发出加液命令。
 
 ## 4. 三部分怎样接起来
 
-设备绑定使用“设备编号、操作名称、操作版本”作为查找条件。找不到就拒绝，不使用默认适配器。
+设备绑定使用“设备编号、动作名称、契约版本”作为查找条件。找不到就拒绝，不使用默认适配器。
 
-下面只展示一次同步的模拟调用，不实现完整任务服务。发生无法确认的异常时，把设备标为需要核实，把两个容器的液量标为未知，阻止后续动作。
+```text
+执行一次请求：
+  用动作契约检查并规范化参数
+  根据设备编号、动作名称、契约版本查找唯一适配器
+  执行能力、配置、权限、资源和对象状态门控
+  占用设备资源
+  调用适配器
 
-```python
-def execute_once(spec, device, bindings, operation, objects, expected, allowed):
-    volume = spec.check_operation(operation)
-    key = (device.device_id, spec.operation_id, spec.contract_version)
-    adapter = bindings.get(key)
-    implemented = (
-        adapter is not None
-        and adapter.device_id == device.device_id
-        and adapter.spec is spec
-    )
-    check_gate(spec, device, implemented, allowed, volume, objects, expected)
+  如果驱动调用后无法确认结果：
+    标记设备需要人工或查询任务核实
+    把受影响但无法确认的对象字段标为未知
+    返回 unknown，禁止直接重试动作
 
-    device.busy = True
-    try:
-        actual = adapter.execute(volume)
-    except Exception:
-        # 驱动可能已经发出命令，不能把异常直接当成“没有执行”。
-        device.needs_review = True
-        for container in objects.values():
-            container.volume_ml = None
-            container.revision += ":unknown"
-        return {
-            "status": "unknown", "actual_volume_mL": None,
-            "simulated": True, "diagnostic": "result_unknown",
-        }
-    finally:
-        device.busy = False
+  如果取得实际结果：
+    按动作契约判断 succeeded 或 failed
+    保存实际量和完成证据
 
-    # 本例只读到了转移量，没有重新读取两个容器的总液量。
-    for container in objects.values():
-        container.volume_ml = None
-        container.revision += ":unmeasured"
-    completed = spec.completed(volume, actual)
-    return {
-        "status": "succeeded" if completed else "failed",
-        "actual_volume_mL": float(actual),
-        "simulated": True,
-        "diagnostic": None if completed else "execution_failed",
-    }
+  最后释放设备资源
 ```
 
-这里返回的是供上层使用的**结果片段**，不是完整 FSP 响应：
+适配器交回的是供上层使用的**结果片段**，不是完整 FSP 响应：
 
-- `status` 放入 `operation.status`。
+- 操作状态放入 `operation.status`。
 - 实际加液量放入 `operation.actual_parameters.measured`，并附测量来源、时间和任务等证据信息。
 - 容器状态变化放入 `object.changes`。实际转移量不能自动当成两个容器的当前液量；仍需按操作要求取得容器状态。
 - 设备状态、资源占用和任务信息放入 `system`。
 
-本例没有查询动作后的容器液量，因此把这两个字段标为未知；再次执行前必须补充新的容器读数和版本。`busy` 只表示示例函数是否正在调用，`needs_review` 才表示结果未知后需要阻止新动作；两者都不是设备实际运动状态。
+如果动作后没有重新读取容器液量，就要把对应字段标为未知。再次执行前必须补充新的容器读数和版本。资源占用状态和设备实际运动状态也必须分开表达。
 
-### 运行一次
+## 可运行源码与测试
 
-```python
-def example():
-    device = Device("device-01", {"liquid_transfer"}, ready=True)
-    objects = {
-        "source": Container("source-01", "source", "source-8",
-                            Decimal("10"), Decimal("100")),
-        "target": Container("container-01", "target", "object-21",
-                            Decimal("0"), Decimal("45")),
-    }
-    expected = {"source": "source-8", "target": "object-21"}
-    operation = {
-        "operation_id": "add_liquid",
-        "contract_version": "1",
-        "parameters": {"volume_mL": 0.5},
-    }
-    driver = SimulatedDriver()
-    adapter = LiquidAdapter(device.device_id, ADD_LIQUID, driver)
-    bindings = {("device-01", "add_liquid", "1"): adapter}
-    result = execute_once(ADD_LIQUID, device, bindings, operation,
-                          objects, expected, allowed=True)
-    assert result["status"] == "succeeded"
-    assert result["actual_volume_mL"] == 0.498
-    assert driver.calls == 1
-    print(result)
+完整示例只使用 Python 标准库，模拟驱动会把 0.5 mL 请求执行为 0.498 mL，并验证实际量仍在本例允许误差内。它还覆盖权限拒绝、能力缺失、设备忙、版本冲突、容量不足、只有 ACK、动作后回执丢失以及结果超出误差等情况。
 
+- [GitCode：完整示例源码](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)
+- [GitCode：示例自动测试](https://gitcode.com/mimedal/all/blob/main/tests/test_fsp_three_parts.py)
 
-if __name__ == "__main__":
-    example()
-```
-
-保存为 `fsp_three_parts.py` 后运行：
+在源仓库根目录运行：
 
 ```bash
-python3 fsp_three_parts.py
+python3 examples/fsp_three_parts.py
+python3 -m unittest tests/test_fsp_three_parts.py -v
 ```
 
-输出中的实际量为 0.498 mL，不是请求中的 0.5 mL；差值在本例允许误差内，所以示例操作成功。所有结果都是模拟结果，不能用于确认真实实验完成。
+所有结果都是模拟结果，不能用于确认真实实验完成。
 
 ## 哪些事情还要由外层服务处理
 
-以上代码只解释这三部分的分工。它没有实现并发锁、幂等记录、任务持久化、重启恢复、状态有效期检查或完整响应组装。不能把它直接当成可控制真实设备的网关。
+这个示例只解释三部分的分工。它没有实现并发锁、幂等记录、任务持久化、重启恢复、状态有效期检查或完整响应组装，不能直接作为控制真实设备的网关。
 
 正式服务要在取得相关资源后再次检查条件，再调用适配器；受理任务、记录幂等键和资源占用应按[任务状态与异常恢复](/docs/specification/fsp/lifecycle)处理。动作结果判断见[操作](/docs/specification/device-integration/operations)，完整请求和响应见[设备接口说明](/docs/specification/device-integration/overview)。
