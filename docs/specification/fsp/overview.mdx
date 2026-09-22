@@ -1,6 +1,6 @@
 ---
 title: "概述"
-description: "说明 FSP 服务如何通过动作契约、能力门控和 Adapter 调用设备接口。"
+description: "说明 FSP 服务如何通过动作契约、能力门控和适配器调用设备接口。"
 ---
 
 Function State Protocol（FSP，函数状态协议）用于把上层的函数调用变成可检查、可执行、可核对结果的设备动作。
@@ -9,9 +9,9 @@ FSP 服务的具体实现由三部分组成：
 
 1. **动作契约**：定义动作的含义、参数、前置条件、结果和完成证据；
 2. **能力门控**：确认目标设备硬件支持、代码已实现、配置已就绪，且当前条件允许执行；
-3. **Adapter（适配器）**：把通用动作转成具体设备命令，再把驱动返回值转成通用结果。
+3. **适配器**：把通用动作转成具体设备命令，再把驱动返回值转成通用结果。
 
-底层设备接口则必须从 **操作、对象、系统** 三个维度表达一次调用。这三个维度不是 FSP 服务的三个执行模块，而是 Adapter 调用底层接口时必须传递和返回的信息。
+底层设备接口则必须从 **操作、对象、系统** 三个维度表达一次调用。这三个维度不是 FSP 服务的三个执行模块，而是适配器调用底层接口时必须传递和返回的信息。
 
 ![FSP 服务实现与设备接口架构](/images/fsp-service-architecture.svg)
 
@@ -21,7 +21,7 @@ FSP 服务的具体实现由三部分组成：
 上层函数调用
   → 动作契约：解析动作和校验参数
   → 能力门控：选定设备并检查是否允许执行
-  → Adapter：转换单位、坐标和命令，调用驱动
+  → 适配器：转换单位、坐标和命令，调用驱动
   → 设备接口：返回操作、对象、系统三个维度的实际信息
   → FSP 服务：按契约判断成功、失败或结果未知
 ```
@@ -43,5 +43,5 @@ FSP 服务的具体实现由三部分组成：
 <CardGroup cols={3}>
   <Card title="动作契约" href="/docs/specification/fsp/action-contract">定义动作的通用语义和完成条件。</Card>
   <Card title="能力门控" href="/docs/specification/fsp/capability-gating">决定这次请求是否允许进入设备实现。</Card>
-  <Card title="Adapter（适配器）" href="/docs/specification/fsp/adapter">展示单位转换、驱动调用和结果解释的 Python 代码。</Card>
+  <Card title="适配器" href="/docs/specification/fsp/adapter">展示单位转换、驱动调用和结果解释的 Python 代码。</Card>
 </CardGroup>
