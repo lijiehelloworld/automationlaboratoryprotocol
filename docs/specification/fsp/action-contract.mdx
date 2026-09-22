@@ -24,7 +24,7 @@ description: "说清一项动作的名称、参数、前置条件、结果和完
 契约对应到具体设备实现时，绑定键至少包含：
 
 ```text
-设备编号 + 动作名称 + 契约版本 → 指定适配器实现
+设备编号 + 动作名称 + 契约版本 → 指定转发器实现
 ```
 
 找不到目标设备的实现时必须拒绝，不能改用另一台设备的同名动作。设备可以使用比契约更严格的参数范围，但不能扩大范围、改变单位或降低完成要求。
@@ -37,4 +37,4 @@ description: "说清一项动作的名称、参数、前置条件、结果和完
 
 字段位置、单位、必填性或“成功”的含义改变时，应使用新契约版本，或提供明确的转换规则。不认识的版本必须拒绝，不能猜测着执行。
 
-流程伪代码见[适配器：动作契约](/docs/specification/fsp/adapter#1-动作契约把动作的意思写清楚)，可运行实现见 [GitCode 示例源码](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)。
+流程伪代码见[转发器：动作契约](/docs/specification/fsp/adapter#1-动作契约把动作的意思写清楚)，可运行实现见 [GitCode 示例源码](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)。

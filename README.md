@@ -2,7 +2,9 @@
 
 AI-native Laboratory Language（ALL，AI 原生实验室语言）规范文档。
 
-ALL 语言引擎由编译/解释器、仿真器和执行器组成。FSP 服务通过动作契约、能力门控和适配器调用设备。FSP 要求厂商提供的设备接口必须覆盖操作、对象和系统三个维度的内容；HTTP、CLI、MCP、RPC 和厂商 SDK 均可作为承载方式。
+ALL 语言引擎从 FSP 获取设备能力、使用边界和约束，通过智能体（Agent）根据实验目的生成任务流程。编译/解释器整理流程，仿真器计算、校验并反馈问题供 Agent 修订。流程通过后，执行器解析任务，在下发前查询最新状态、确认设备可用，再交给 FSP 执行。FSP 服务通过动作契约、能力门控和转发器调用设备，并返回实际结果。
+
+设备仪器接口必须覆盖操作、对象和系统三个维度的内容；HTTP、CLI、MCP、RPC 和厂商 SDK 均可作为承载方式。完整说明见[协议概述](docs/specification/overview.mdx)。
 
 FSP 三部分的可运行示例位于 GitCode 的 [`examples/fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)，对应测试位于 [`tests/test_fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/tests/test_fsp_three_parts.py)。Mintlify 文档只保留用于解释流程的伪代码。
 

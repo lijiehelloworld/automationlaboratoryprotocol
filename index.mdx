@@ -3,7 +3,7 @@ title: "AI-native Laboratory Language"
 description: "了解 ALL 如何把实验目标转成可验证、可执行的设备操作。"
 ---
 
-AI-native Laboratory Language（ALL，AI 原生实验室语言）把实验目标整理成设备可以执行的步骤。执行前，先检查参数、容器状态和安全条件；执行后，再确认设备实际做了什么。FSP 规定每次设备调用需要提供哪些信息、返回哪些结果。
+AI-native Laboratory Language（ALL，AI 原生实验室语言）把实验目的整理成设备可以执行的任务流程。语言引擎先从 FSP 获取设备能力、使用边界和约束，通过智能体（Agent）生成流程，再由仿真器计算和校验，将问题反馈给 Agent 修订。通过仿真后，执行器解析任务，在下发前查询最新状态、确认可用设备，再交给 FSP 执行并返回实际结果。
 
 <CardGroup cols={2}>
   <Card title="阅读规范" icon="book" href="/docs/specification/overview">了解接口怎么写、结果怎么判断、实现怎么验收。</Card>
@@ -18,5 +18,5 @@ AI-native Laboratory Language（ALL，AI 原生实验室语言）把实验目标
   <Card title="ALL 语言引擎" href="/docs/specification/engine/overview">了解编译、解释、仿真与执行怎样配合。</Card>
   <Card title="仿真器" href="/docs/specification/engine/simulator">不动真实设备，先检查参数、步骤和安全条件。</Card>
   <Card title="执行器" href="/docs/specification/engine/executor">通过符合 FSP 的设备接口执行并核验实际结果。</Card>
-  <Card title="FSP 函数状态协议" href="/docs/specification/fsp/overview">通过动作契约、能力门控和适配器将函数调用落到设备。</Card>
+  <Card title="FSP 函数状态协议" href="/docs/specification/fsp/overview">通过动作契约、能力门控和转发器将函数调用落到设备。</Card>
 </CardGroup>
