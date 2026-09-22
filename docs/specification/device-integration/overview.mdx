@@ -7,7 +7,7 @@ FSP 要求厂商提供的设备接口必须包含 **操作、对象、系统** �
 
 厂商可以继续使用原有的 HTTP API、CLI、MCP 工具、SDK、RPC 或驱动，也可以把三方面信息分布在操作调用、状态查询、结果回调或事件中。FSP 服务中的转发器按预先写好的规则完成字段、单位和结果映射；如果厂商接口没有提供某项实际信息，转发器只能把它标为未知，不能临时猜测或用请求值代替。
 
-流程伪代码见[转发器](/docs/specification/fsp/adapter)：用同一个加液例子说明动作怎么定义、执行前怎么检查、设备命令怎么转换。完整实现见 [GitCode 示例源码](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)。
+处理逻辑见[转发器](/docs/specification/fsp/adapter)：用同一个加液例子说明动作怎么定义、执行前怎么检查、设备命令怎么转换。完整实现见 [GitCode 示例源码](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)。
 
 ## 各部分负责什么
 

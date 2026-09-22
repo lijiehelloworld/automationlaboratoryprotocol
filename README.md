@@ -6,7 +6,7 @@ ALL 语言引擎从 FSP 获取设备能力、使用边界和约束，通过智�
 
 设备仪器接口必须覆盖操作、对象和系统三个维度的内容；HTTP、CLI、MCP、RPC 和厂商 SDK 均可作为承载方式。完整说明见[协议概述](docs/specification/overview.mdx)。
 
-FSP 三部分的可运行示例位于 GitCode 的 [`examples/fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)，对应测试位于 [`tests/test_fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/tests/test_fsp_three_parts.py)。Mintlify 文档只保留用于解释流程的伪代码。
+FSP 三部分的示例实现位于 GitCode 的 [`examples/fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)，对应测试位于 [`tests/test_fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/tests/test_fsp_three_parts.py)。Mintlify 文档说明处理逻辑和协作流程。
 
 ## 本地预览
 
