@@ -7,7 +7,7 @@ description: "说明执行器如何校验、提交并跟踪一份实验计划，
 
 ## 执行器接收什么
 
-当前计划格式为 `Plan v1`。一份计划至少包含一个稳定的幂等键、按顺序排列的步骤，以及设备和对象的预期版本。
+当前执行器接收顺序执行计划。一份计划至少包含一个稳定的幂等键、按顺序排列的步骤，以及设备和对象的预期版本。
 
 ```json
 {
@@ -62,7 +62,7 @@ description: "说明执行器如何校验、提交并跟踪一份实验计划，
 1. **确认来源**：计划必须已经通过仿真；仿真输出只说明计划可继续检查，不代表设备已经执行。
 2. **读取当前信息**：调用等价的 `get_capabilities` 和 `get_snapshot`，取得设备当前支持的动作、系统版本、对象版本和可观察状态。
 3. **补齐运行时数据**：把已登记的容器编号和快照中的版本写入计划；为整份计划保存一个稳定的幂等键。
-4. **检查计划结构**：按照 `Plan v1` Schema 检查必填字段、字段类型、步骤编号和计划大小。结构检查通过只代表 JSON 可读取。
+4. **检查计划结构**：按照执行计划的数据格式检查必填字段、字段类型、步骤编号和计划大小。结构检查通过只代表 JSON 可读取。
 5. **运行时校验**：调用等价的 `validate_plan`，核对动作、参数、对象、版本、权限、安全限制、资源冲突和现场前提。
 6. **提交一次**：校验通过后调用等价的 `submit_plan`。网络重试继续使用原幂等键，不生成另一份计划。
 7. **跟踪原任务**：保存返回的计划编号和任务编号，持续通过等价的 `get_plan`、`get_task` 和 `get_snapshot` 查询同一批记录。
@@ -80,7 +80,7 @@ def execute(plan, simulation_result):
     plan = reconcile_plan_with_snapshot(plan, snapshot)
     # 状态或参数改变时重新验证，不能覆盖旧版本后直接继续
 
-    check_plan_v1_schema(plan)          # 只检查结构
+    check_plan_schema(plan)             # 只检查结构
     validation = validate_plan(plan, capabilities, snapshot)
     if not validation.passed:
         return validation.failure
