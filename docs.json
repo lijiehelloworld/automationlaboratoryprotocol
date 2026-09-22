@@ -64,7 +64,6 @@
             "pages": [
               "docs/specification/engine/overview",
               "docs/specification/engine/compiler",
-              "docs/specification/engine/interpreter",
               "docs/specification/engine/simulator",
               "docs/specification/engine/executor"
             ]
@@ -211,6 +210,14 @@
     },
     {
       "source": "/specification/engine/compiler",
+      "destination": "/docs/specification/engine/compiler"
+    },
+    {
+      "source": "/docs/specification/engine/interpreter",
+      "destination": "/docs/specification/engine/compiler"
+    },
+    {
+      "source": "/specification/engine/interpreter",
       "destination": "/docs/specification/engine/compiler"
     },
     {
