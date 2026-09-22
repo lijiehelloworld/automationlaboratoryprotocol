@@ -1,0 +1,133 @@
+---
+title: "执行器"
+description: "说明如何向设备提交已验证步骤并确认真实执行结果。"
+---
+
+执行器只接收通过仿真的中间程序。每一步执行前，它重新确认实际容器状态、设备状态和安全限制，然后调用设备或适配层暴露的接口。接口调用方式可以是 HTTP、CLI、MCP、RPC 或 SDK。
+
+## 输入
+
+```json
+{
+  "program_id": "program-001",
+  "simulation_id": "simulation-001",
+  "simulation_status": "passed",
+  "steps": [
+    {
+      "step_id": "step-1",
+      "device_id": "device-01",
+      "object": {
+        "containers": [
+          {
+            "container_id": "source-01",
+            "role": "source",
+            "expected_revision": "source-8"
+          },
+          {
+            "container_id": "container-01",
+            "role": "target",
+            "expected_revision": "object-21",
+            "before_state": {
+              "container_status": "无盖"
+            }
+          }
+        ]
+      },
+      "operation": {
+        "operation_id": "add_liquid",
+        "contract_version": "1",
+        "parameters": {
+          "source_container_id": "source-01",
+          "volume_mL": 0.5
+        }
+      },
+      "system": {
+        "expected_definition_revision": "12",
+        "expected_system_revision": "system-21",
+        "expected_device_state": "idle",
+        "execution_mode": "async",
+        "idempotency_key": "execution-001:step-1"
+      }
+    }
+  ]
+}
+```
+
+## 执行过程
+
+1. 确认仿真通过，且设备定义、对象和系统版本号未变化；
+2. 重新确认操作的对象、操作和系统执行前条件；
+3. 将三段输入传递给符合 FSP 的设备接口；
+4. 对同步结果立即核验；对异步任务通过实现提供的等价查询能力取得结果；
+5. 根据证据记录实际状态及字段质量；只有完成条件全部通过才能将步骤标为成功。
+
+## 输出
+
+下例表示设备已经停止，但缺少样品效果证据。它是未知结果而非成功；`null` 表示受影响体积暂不可确认，不表示体积为零。
+
+```json
+{
+  "execution_id": "execution-001",
+  "program_id": "program-001",
+  "steps": [
+    {
+      "step_id": "step-1",
+      "object": {
+        "changes": [
+          {
+            "container_id": "source-01",
+            "after_state": {
+              "sample_volume_mL": null
+            },
+            "revision": "source-9",
+            "state_quality": {"sample_volume_mL": {"quality": "unknown", "reason": "动作后缺少体积观测", "observed_at": null}}
+          },
+          {
+            "container_id": "container-01",
+            "after_state": {
+              "sample_volume_mL": null
+            },
+            "revision": "object-22",
+            "state_quality": {"sample_volume_mL": {"quality": "unknown", "reason": "动作后缺少体积观测", "observed_at": null}}
+          }
+        ]
+      },
+      "operation": {
+        "operation_id": "add_liquid",
+        "status": "unknown",
+        "diagnostics": [
+          {
+            "code": "completion_evidence_missing",
+            "dimension": "operation",
+            "message": "设备已停止，但实际加液量尚不可确认",
+            "retryable": false
+          }
+        ],
+        "actual_parameters": {},
+        "completion_evidence": []
+      },
+      "system": {
+        "device_state": "idle",
+        "system_revision": "system-23",
+        "observed_at": "2026-09-21T02:00:20Z",
+        "task": {
+          "task_id": "task-001",
+          "status": "unknown",
+          "phase": "reconciliation"
+        },
+        "notices": [
+          "设备已确认停止，容器体积已失效，相关资源保持占用"
+        ]
+      }
+    }
+  ]
+}
+```
+
+失败、取消或未知结果时，执行器不得提交预期成功状态，必须保存设备可确认的对象状态、操作诊断和系统注意事项。
+
+首次调用前，要保存本次执行及每个步骤的幂等键。网络重试使用原键；程序重启后先查询旧任务，不重新发送结果未知的动作。
+
+前一步达到完成条件后，才能执行依赖它的下一步。如果只执行了一部分，要分别保留各步骤结果。需要补救时，应把补救动作作为新操作，重新检查权限、条件和幂等键，不能假定原来的动作可以撤销。
+
+用前一步结果更新后续步骤的预期版本时，要保留原计划、实际观察和重新检查的记录。发现版本冲突，不能直接改成当前版本就继续。

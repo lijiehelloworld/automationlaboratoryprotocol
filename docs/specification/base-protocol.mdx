@@ -1,0 +1,102 @@
+---
+title: "请求与响应格式"
+description: "说明设备接口如何表达输入、结果、状态版本和错误。"
+---
+
+## 适用范围
+
+本规范只定义设备接口必须表达的数据结构与行为，不定义 HTTP 路径、CLI 命令、MCP 工具名、RPC 名称或消息封装格式。实现可以自行选择连接和传输方式。
+
+## 通用操作输入
+
+```json
+{
+  "device_id": "device-01",
+  "object": {
+    "containers": []
+  },
+  "operation": {
+    "operation_id": "add_liquid",
+    "parameters": {},
+    "preconditions": []
+  },
+  "system": {
+    "expected_device_state": "idle",
+    "expected_system_revision": "system-21",
+    "execution_mode": "async",
+    "idempotency_key": "request-001",
+    "preconditions": [],
+    "safety_fences": []
+  }
+}
+```
+
+## 通用操作输出
+
+```json
+{
+  "object": {
+    "changes": []
+  },
+  "operation": {
+    "operation_id": "add_liquid",
+    "status": "accepted",
+    "actual_parameters": {},
+    "diagnostics": []
+  },
+  "system": {
+    "device_state": "idle",
+    "system_revision": "system-22",
+    "safety_checks": [],
+    "task": {"task_id": "task-001", "status": "queued", "cancellable": true},
+    "notices": [],
+    "observed_at": "2026-09-02T06:00:00Z"
+  }
+}
+```
+
+| 部分 | 最低要求 |
+| --- | --- |
+| `object` | 返回容器当前可确认状态、变化与版本号；无变化也必须明确表达 |
+| `operation` | 返回操作标识、受理或完成状态、实际参数和诊断 |
+| `system` | 返回设备状态、安全检查、任务、注意事项和观测时间 |
+
+## 版本号与单位
+
+- 对象状态和系统状态必须带有版本号；
+- 改变状态的操作必须带入预期版本号；冲突时不得继续执行；
+- 数值和单位必须明确表达。
+
+## 出错时怎样返回
+
+输入不能解析、缺少必填字段或字段类型错误时，所用接口可以使用自身错误格式返回格式固定的错误说明。设备已经受理操作后的失败必须使用三段操作输出，返回实际对象状态、错误说明及设备、系统状态。
+
+## 字段放在哪里
+
+以上为结构示意，空容器数组不能替代加液操作所需的真实对象。完整受理示例见[设备接口](/docs/specification/device-integration/overview)。
+
+**CON01**：操作名称统一放在 `operation.operation_id`。`device_id` 指定执行设备，可以写在请求外层，也可以由经过身份校验的连接提供。
+
+实际接口如果用工具名、URL 路径或旧的顶层字段表示操作，必须说明怎样转成规范字段。如果请求的不同位置写了不同的设备或操作，必须拒绝，不能擅自选一个。
+
+| 字段 | 请求要求 | 响应要求 |
+| --- | --- | --- |
+| `object.containers` | 数组；列出全部相关容器及角色；无容器操作明确为空 | 使用 `object.changes` 返回被观察或受影响对象 |
+| `operation.operation_id` | 非空字符串；查找对应的操作定义 | 与请求一致 |
+| `operation.parameters` | 对象；依据操作定义验证类型、必填项、单位和跨字段约束 | 请求值不得直接复制为实测结果 |
+| `operation.status` | 不适用 | 按[生命周期](/docs/specification/fsp/lifecycle)返回统一状态 |
+| `operation.actual_parameters` | 不适用 | 仅包含已回读或已测量的值；尚无证据时为空对象 |
+| `operation.diagnostics` | 不适用 | 数组，无诊断时为空；拒绝、失败或未知时说明原因 |
+| `system.expected_system_revision` | 改变状态时必填；值为字符串；只比较是否相同，不解析其中的数字 | 以 `system_revision` 返回服务当前版本 |
+| `system.expected_definition_revision` | 调用方固定设备定义时必填；须与所用能力描述相符 | 实现须能追溯任务所用定义 |
+| `system.idempotency_key` | 改变状态时必填 | 记录它对应的原任务，重试时不新建任务 |
+| `system.task` | 不适用 | 异步受理后为非空对象；同步已终结可为空 |
+| `system.observed_at` | 不适用 | 真实系统观测时间；未知可为 `null` 并附诊断 |
+
+**CON02**：实现必须提供程序能读取的输入、输出和设备能力定义，例如 JSON Schema，并说明各字段怎样对应到实际接口。
+
+本页的表格和示例不是完整 JSON Schema。验收时既要检查数据格式，也要检查本规范要求的处理行为。
+
+缺失字段表示未提供；`null` 只用于契约允许的未知或尚不存在值，并说明原因；空数组表示已明确没有条目。不得将未知物理量填为默认零值，也不能将 `null` 或空字符串解释为测量结果。数字应为有限数值，带单位的文本不能替代数值字段；字段名含单位时定义中仍须声明单位、换算和舍入规则。
+
+请求编号区分每次通信，任务编号区分每次执行；设备编号、操作名称和对象版本也各有用途，不能混用。查询结果应说明属于哪台设备、哪个任务。请求尚未受理就被拒绝时，不能返回一个假装已经创建的任务编号。

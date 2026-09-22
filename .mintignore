@@ -1,5 +1,19 @@
-# 内部能力样例与研究材料只用于编写规范，不作为网站页面发布。
+# GitHub 协作记录与项目计划不作为网站内容发布。
+/AGENTS.md
+/agents.md
+/README.md
+/planning/
+
+# 本地研究原件、历史产物和旧资料目录不发布，也不建立搜索索引。
+/references/
+/artifacts/
 skill_all/
 0831-A computable representation of the physical laboratory/
 *.docx
 *.pdf
+
+# 本地配置与缓存不发布。
+.DS_Store
+.idea/
+.mintlify/
+node_modules/

@@ -1,0 +1,117 @@
+---
+title: "编译/解释器"
+description: "说明如何把实验目标和设备接口整理成可验证的执行步骤。"
+---
+
+编译/解释器读取科学目标、对象初始状态和 FSP 设备定义，将设备操作转换为类型化函数，并生成候选中间程序。它不直接调用物理设备。
+
+## 输入
+
+```json
+{
+  "goal": {
+    "name": "向目标容器加入液体",
+    "success_criteria": [
+      "实际加液量为 0.5 mL",
+      "容器状态可确认"
+    ]
+  },
+  "initial_objects": [
+    {
+      "container_id": "container-01",
+      "object_type_id": "container.centrifuge_tube",
+      "container_status": "无盖",
+      "sample_status": "空",
+      "revision": "object-21"
+    },
+    {
+      "container_id": "source-01",
+      "object_type_id": "container.reservoir",
+      "sample_status": "液体",
+      "sample_volume_mL": 10,
+      "revision": "source-8"
+    }
+  ],
+  "fsp_definitions": [
+    {
+      "device_id": "device-01",
+      "revision": "12",
+      "operations": [
+        "add_liquid"
+      ],
+      "objects": [
+        "container.centrifuge_tube"
+      ],
+      "system_states": [
+        "idle",
+        "busy",
+        "fault"
+      ]
+    }
+  ]
+}
+```
+
+## 处理过程
+
+1. 校验操作是否完整定义对象要求、参数 Schema、执行前条件、系统安全限制和响应结构；
+2. 校验实验目标所需容器与操作兼容；
+3. 将参数类型、范围、枚举和状态变化编译为类型化函数契约；
+4. 组织带依赖关系的候选中间程序；
+5. 固定设备定义、对象状态和系统状态版本号。
+
+## 输出
+
+```json
+{
+  "program_id": "program-001",
+  "status": "compiled",
+  "definition_revisions": {
+    "device-01": "12"
+  },
+  "steps": [
+    {
+      "step_id": "step-1",
+      "device_id": "device-01",
+      "object": {
+        "containers": [
+          {
+            "container_id": "source-01",
+            "role": "source",
+            "expected_revision": "source-8"
+          },
+          {
+            "container_id": "container-01",
+            "role": "target",
+            "expected_revision": "object-21",
+            "before_state": {
+              "container_status": "无盖"
+            }
+          }
+        ]
+      },
+      "operation": {
+        "operation_id": "add_liquid",
+        "contract_version": "1",
+        "parameters": {
+          "source_container_id": "source-01",
+          "volume_mL": 0.5
+        }
+      },
+      "system": {
+        "expected_definition_revision": "12",
+        "expected_system_revision": "system-21",
+        "expected_device_state": "idle",
+        "execution_mode": "async"
+      }
+    }
+  ],
+  "diagnostics": []
+}
+```
+
+编译/解释器必须拒绝未在 FSP 定义中声明的操作或参数。`compiled` 只表示结构通过，不表示已仿真或已执行。
+
+编译结果必须写明使用哪台设备、哪一版操作和设备定义，并记录步骤顺序、所需资源和完成条件。`implemented` 或 `ready` 的缓存值不能当成执行许可。
+
+中间步骤使用与请求相同的三部分格式。执行器创建执行任务时，再生成并保存幂等键；编译阶段不受理设备动作。

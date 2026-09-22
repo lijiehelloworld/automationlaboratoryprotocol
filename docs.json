@@ -18,15 +18,15 @@
             "group": "概览",
             "pages": [
               "index",
-              "quickstart",
-              "faq"
+              "docs/quickstart",
+              "docs/faq"
             ]
           },
           {
             "group": "架构与术语",
             "pages": [
-              "architecture/overview",
-              "architecture/terms"
+              "docs/architecture/overview",
+              "docs/architecture/terms"
             ]
           }
         ]
@@ -37,40 +37,43 @@
           {
             "group": "协议基础",
             "pages": [
-              "specification/index",
-              "specification/overview",
-              "specification/base-protocol"
+              "docs/specification/index",
+              "docs/specification/overview",
+              "docs/specification/base-protocol"
             ]
           },
           {
             "group": "FSP 函数状态协议",
             "pages": [
-              "specification/fsp/overview",
-              "specification/fsp/operations",
-              "specification/fsp/objects",
-              "specification/fsp/system"
+              "docs/specification/fsp/overview",
+              "docs/specification/fsp/capabilities",
+              "docs/specification/fsp/operations",
+              "docs/specification/fsp/objects",
+              "docs/specification/fsp/system",
+              "docs/specification/fsp/lifecycle"
             ]
           },
           {
             "group": "设备",
             "pages": [
-              "specification/device-integration/overview"
+              "docs/specification/device-integration/overview",
+              "docs/specification/device-integration/python-example"
             ]
           },
           {
             "group": "ALL 语言引擎",
             "pages": [
-              "specification/engine/compiler",
-              "specification/engine/simulator",
-              "specification/engine/executor"
+              "docs/specification/engine/compiler",
+              "docs/specification/engine/simulator",
+              "docs/specification/engine/executor"
             ]
           },
           {
             "group": "保障与符合性",
             "pages": [
-              "specification/errors",
-              "specification/security-and-safety",
-              "specification/conformance"
+              "docs/specification/errors",
+              "docs/specification/security-and-safety",
+              "docs/specification/conformance"
             ]
           }
         ]
@@ -81,9 +84,9 @@
           {
             "group": "规范演进",
             "pages": [
-              "proposals/about",
-              "proposals/process",
-              "proposals/template"
+              "docs/proposals/about",
+              "docs/proposals/process",
+              "docs/proposals/template"
             ]
           }
         ]
@@ -94,10 +97,10 @@
           {
             "group": "参与社区",
             "pages": [
-              "community/overview",
-              "community/contributing",
-              "community/governance",
-              "community/code-of-conduct"
+              "docs/community/overview",
+              "docs/community/contributing",
+              "docs/community/governance",
+              "docs/community/code-of-conduct"
             ]
           }
         ]
@@ -122,5 +125,107 @@
   },
   "search": {
     "prompt": "搜索 ALL 文档..."
-  }
+  },
+  "redirects": [
+    {
+      "source": "/quickstart",
+      "destination": "/docs/quickstart"
+    },
+    {
+      "source": "/faq",
+      "destination": "/docs/faq"
+    },
+    {
+      "source": "/architecture/overview",
+      "destination": "/docs/architecture/overview"
+    },
+    {
+      "source": "/architecture/terms",
+      "destination": "/docs/architecture/terms"
+    },
+    {
+      "source": "/specification/index",
+      "destination": "/docs/specification/index"
+    },
+    {
+      "source": "/specification/overview",
+      "destination": "/docs/specification/overview"
+    },
+    {
+      "source": "/specification/base-protocol",
+      "destination": "/docs/specification/base-protocol"
+    },
+    {
+      "source": "/specification/fsp/overview",
+      "destination": "/docs/specification/fsp/overview"
+    },
+    {
+      "source": "/specification/fsp/operations",
+      "destination": "/docs/specification/fsp/operations"
+    },
+    {
+      "source": "/specification/fsp/objects",
+      "destination": "/docs/specification/fsp/objects"
+    },
+    {
+      "source": "/specification/fsp/system",
+      "destination": "/docs/specification/fsp/system"
+    },
+    {
+      "source": "/specification/device-integration/overview",
+      "destination": "/docs/specification/device-integration/overview"
+    },
+    {
+      "source": "/specification/engine/compiler",
+      "destination": "/docs/specification/engine/compiler"
+    },
+    {
+      "source": "/specification/engine/simulator",
+      "destination": "/docs/specification/engine/simulator"
+    },
+    {
+      "source": "/specification/engine/executor",
+      "destination": "/docs/specification/engine/executor"
+    },
+    {
+      "source": "/specification/errors",
+      "destination": "/docs/specification/errors"
+    },
+    {
+      "source": "/specification/security-and-safety",
+      "destination": "/docs/specification/security-and-safety"
+    },
+    {
+      "source": "/specification/conformance",
+      "destination": "/docs/specification/conformance"
+    },
+    {
+      "source": "/proposals/about",
+      "destination": "/docs/proposals/about"
+    },
+    {
+      "source": "/proposals/process",
+      "destination": "/docs/proposals/process"
+    },
+    {
+      "source": "/proposals/template",
+      "destination": "/docs/proposals/template"
+    },
+    {
+      "source": "/community/overview",
+      "destination": "/docs/community/overview"
+    },
+    {
+      "source": "/community/contributing",
+      "destination": "/docs/community/contributing"
+    },
+    {
+      "source": "/community/governance",
+      "destination": "/docs/community/governance"
+    },
+    {
+      "source": "/community/code-of-conduct",
+      "destination": "/docs/community/code-of-conduct"
+    }
+  ]
 }

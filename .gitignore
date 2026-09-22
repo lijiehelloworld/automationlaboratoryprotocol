@@ -1,5 +1,9 @@
+# 本地开发依赖、缓存与编辑器配置。
 .mintlify/
 node_modules/
 .DS_Store
 .idea/
-artifacts/
+
+# 研究原件和历史产物仅保存在本地，不进入 GitHub。
+/artifacts/
+/references/

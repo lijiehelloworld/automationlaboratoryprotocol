@@ -1,22 +1,22 @@
 ---
 title: "AI-native Laboratory Language"
-description: "了解 ALL 如何把实验意图转成可验证、可执行的设备操作。"
+description: "了解 ALL 如何把实验目标转成可验证、可执行的设备操作。"
 ---
 
-AI-native Laboratory Language（ALL，AI 原生实验室语言）将实验目标转换为可编译、可仿真、可执行的程序。FSP 是 ALL 内部面向设备的接口语义规范。
+AI-native Laboratory Language（ALL，AI 原生实验室语言）把实验目标整理成设备可以执行的步骤。执行前，先检查参数、容器状态和安全条件；执行后，再确认设备实际做了什么。FSP 规定每次设备调用需要提供哪些信息、返回哪些结果。
 
 <CardGroup cols={2}>
-  <Card title="阅读规范" icon="book" href="/specification/overview">查看协议边界、接口和符合性要求。</Card>
-  <Card title="查看总体设计" icon="diagram-project" href="/architecture/overview">理解 ALL 语言引擎、FSP 与设备的关系。</Card>
-  <Card title="快速开始" icon="bolt" href="/quickstart">从设备定义到编译、仿真和执行。</Card>
-  <Card title="名词解释" icon="spell-check" href="/architecture/terms">查询术语和职责边界。</Card>
+  <Card title="阅读规范" icon="book" href="/docs/specification/overview">了解接口怎么写、结果怎么判断、实现怎么验收。</Card>
+  <Card title="查看总体设计" icon="diagram-project" href="/docs/architecture/overview">理解 ALL 语言引擎、FSP 与设备的关系。</Card>
+  <Card title="快速开始" icon="bolt" href="/docs/quickstart">从设备定义到编译、仿真和执行。</Card>
+  <Card title="名词解释" icon="spell-check" href="/docs/architecture/terms">查看文档中常用词的含义。</Card>
 </CardGroup>
 
 ## 核心组成
 
 <CardGroup cols={2}>
-  <Card title="编译/解释器" href="/specification/engine/compiler">把设备定义和实验意图转换为中间程序。</Card>
-  <Card title="仿真器" href="/specification/engine/simulator">验证参数、状态、围栏和完成条件。</Card>
-  <Card title="执行器" href="/specification/engine/executor">通过符合 FSP 的设备接口执行并核验实际结果。</Card>
-  <Card title="FSP 协议" href="/specification/fsp/overview">使用对象、操作和系统三段结构表达设备操作。</Card>
+  <Card title="编译/解释器" href="/docs/specification/engine/compiler">把设备定义和实验目标转换为中间程序。</Card>
+  <Card title="仿真器" href="/docs/specification/engine/simulator">不动真实设备，先检查参数、步骤和安全条件。</Card>
+  <Card title="执行器" href="/docs/specification/engine/executor">通过符合 FSP 的设备接口执行并核验实际结果。</Card>
+  <Card title="FSP 协议" href="/docs/specification/fsp/overview">使用对象、操作和系统三部分表达设备操作。</Card>
 </CardGroup>

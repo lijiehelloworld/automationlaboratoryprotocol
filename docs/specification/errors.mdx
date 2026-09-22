@@ -1,0 +1,62 @@
+---
+title: "错误与诊断"
+description: "说明如何用统一错误码定位对象、操作和系统问题。"
+---
+
+FSP 规定诊断应当能够说明失败发生在对象、操作或系统哪个维度；不规定调用方式采用何种错误封装。
+
+## 诊断结构
+
+```json
+{
+  "code": "object_state_conflict",
+  "message": "目标容器实际为有盖状态",
+  "dimension": "object",
+  "path": "object.containers[0].before_state.container_status",
+  "retryable": false,
+  "details": {"expected": "无盖", "actual": "有盖"}
+}
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `code` | 稳定的机器可读错误码 |
+| `message` | 面向调用方的简明说明 |
+| `dimension` | `object`、`operation` 或 `system` |
+| `path` | 出错字段或规则所在位置 |
+| `retryable` | 条件满足后是否允许按既定恢复流程重试；不是自动重发物理动作的许可 |
+| `details` | 与诊断有关的已脱敏事实 |
+
+## 推荐错误码
+
+| 错误码 | 维度 | 含义 |
+| --- | --- | --- |
+| `invalid_operation` | operation | 操作未定义或当前设备不支持 |
+| `invalid_parameter` | operation | 参数缺失、类型错误或结构不合法 |
+| `parameter_out_of_range` | operation | 参数超出声明范围或不在枚举中 |
+| `object_not_found` | object | 目标容器不可确认或不存在 |
+| `object_state_conflict` | object | 实际容器状态不满足执行前条件 |
+| `capacity_insufficient` | object | 容器剩余容量或样品量不满足要求 |
+| `system_state_conflict` | system | 设备实际状态与预期状态不一致 |
+| `revision_conflict` | system | 对象或系统版本号已变化 |
+| `safety_fence_failed` | system | 安全限制、资源锁或设备保护未通过 |
+| `execution_failed` | operation | 操作已开始但未完成 |
+| `result_unknown` | system | 无法确认设备是否完成或对象是否变化 |
+| `task_not_found` | system | 异步任务标识无法确认 |
+| `unsafe_cancellation` | system | 当前阶段不允许取消操作 |
+| `implementation_missing` | operation | 有契约但没有当前设备的可用实现 |
+| `action_not_ready` | system | 实现存在，但必要配置或校准尚不满足 |
+| `resource_busy` | system | 所需设备或对象资源被其他任务占用 |
+| `idempotency_conflict` | system | 同一幂等键对应不同内容的请求 |
+| `unsupported_version` | operation | 不支持请求的协议或操作契约版本 |
+| `completion_evidence_missing` | operation | 缺少完成范围所要求的证据 |
+| `completion_evidence_conflict` | operation | 多份证据互相矛盾，不能确认完成 |
+| `observation_stale` | system | 观测已过期或早于相关动作 |
+| `observation_binding_invalid` | object | 观测与设备、任务、容器或字段不匹配 |
+| `authorization_denied` | system | 调用方无执行、读取、取消或确认权限 |
+
+## 返回规则
+
+输入在动作前被拒绝时，所用接口可使用自身错误格式返回上述诊断。设备已经受理操作后，无论成功、失败、取消或结果未知，都必须返回对象、操作和系统三部分结果；诊断放在 `operation.diagnostics` 或与其等价的位置。
+
+恢复必须区分重新读取结果、同键重试通信、修正未受理请求，以及创建新的物理任务。超时、断线或 `unknown` 时先查询原任务；禁止通过换键绕过未知结果或资源占用。诊断应附带任务标识、发生阶段、规则编号和安全恢复建议，但不得泄露凭证或其他调用方的任务细节。

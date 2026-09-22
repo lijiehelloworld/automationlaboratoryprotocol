@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WorkBuddy 硬件生态通信架构</title>
+  <style>
+    :root{--paper:#f7f8fb;--ink:#172033;--muted:#5f6b7a;--line:#9aa7b8;--blue:#dceeff;--blue-ink:#1d5c91;--green:#dff5e9;--green-ink:#24734b;--orange:#fff0d9;--orange-ink:#925b13;--gray:#eef1f5;--red:#fff0f0;--red-ink:#a13b3b;--shadow:0 12px 28px rgba(39,55,80,.09)}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+    .poster{width:1500px;margin:0 auto;padding:34px 42px 28px;background:linear-gradient(180deg,#fbfcfe 0%,#f5f7fa 100%)}
+    header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px} h1{font-size:29px;letter-spacing:.02em;margin:0 0 7px} .subtitle{color:var(--muted);font-size:15px}.stamp{padding:8px 12px;border:1px solid #c9d3df;border-radius:999px;color:#536174;background:#fff;font-size:12px}
+    .figure{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}.region{background:#fff;border:1px solid #d7dee8;border-radius:18px;padding:17px;box-shadow:var(--shadow);position:relative}.region h2{font-size:16px;margin:0 0 13px;display:flex;align-items:center;gap:8px}.region h2 span{font-size:20px}.hardware{background:linear-gradient(180deg,#fffdf9,#fff)}.platform{background:linear-gradient(180deg,#f8fbff,#fff)}.clients{background:linear-gradient(180deg,#f8fffb,#fff)}
+    .device-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.device{min-height:102px;border:1px solid #eadfcf;border-radius:14px;background:var(--orange);padding:12px;display:flex;gap:10px;align-items:flex-start}.device .ico{font-size:28px;line-height:1}.device strong{display:block;font-size:14px}.device small{display:block;color:#725d3e;font-size:11px;margin-top:4px}.device.wide{grid-column:1/-1;min-height:76px}
+    .stack{display:grid;gap:10px}.node{border-radius:14px;padding:12px 14px;border:1px solid #cfdae7;background:#fff;box-shadow:0 5px 12px rgba(39,55,80,.05)}.node.blue{background:var(--blue);border-color:#b9d9f5}.node.green{background:var(--green);border-color:#bfe6cf}.node.gray{background:var(--gray)}.node strong{font-size:14px}.node small{display:block;color:var(--muted);margin-top:4px;font-size:11px}.protocols{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.pill{padding:4px 8px;border-radius:999px;font-size:11px;background:#fff;border:1px solid #c7d4e3;color:#46566b}.pill.blue{color:var(--blue-ink);border-color:#b3d5f1}.pill.green{color:var(--green-ink);border-color:#b7dfc9}.pill.orange{color:var(--orange-ink);border-color:#e8c98e}.arrow{height:28px;display:flex;align-items:center;justify-content:center;color:#67778c;font-size:20px;position:relative}.arrow:before{content:"";height:1px;background:var(--line);width:76%}.arrow:after{content:"";border-left:7px solid var(--line);border-top:5px solid transparent;border-bottom:5px solid transparent;margin-left:-1px}.arrow label{position:absolute;background:#fff;padding:0 7px;color:#526175;font-size:11px;top:4px}.legend{margin-top:18px;display:flex;gap:16px;flex-wrap:wrap;color:#566477;font-size:12px}.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}.foot{margin-top:18px;display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.note{border:1px dashed #b8c4d2;border-radius:14px;padding:12px 14px;background:#fff;color:#526175;font-size:12px}.note strong{color:var(--ink)}.unknown{color:var(--red-ink)}
+    @media(max-width:900px){.poster{width:100%;padding:22px}.figure{grid-template-columns:1fr}.foot{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="poster">
+    <header>
+      <div><h1>WorkBuddy 硬件生态通信架构</h1><div class="subtitle">已知信息版：硬件入口、开放平台、Agent 编排与多端交付</div></div>
+      <div class="stamp">证据边界：文章 + 官方开放平台文档</div>
+    </header>
+    <section class="figure" aria-label="WorkBuddy硬件生态通信架构图">
+      <section class="region hardware">
+        <h2><span>①</span> 已接入硬件与厂商侧</h2>
+        <div class="device-grid">
+          <div class="device"><div class="ico">👓</div><div><strong>Rokid 智能眼镜</strong><small>麦克风 / 摄像头采集</small></div></div>
+          <div class="device"><div class="ico">🎧</div><div><strong>科大讯飞穿戴设备</strong><small>端侧模型 + 手机 / PC</small></div></div>
+          <div class="device"><div class="ico">🎙️</div><div><strong>猛玛 LARK A2</strong><small>按键唤醒 / 删除 / 发指令</small></div></div>
+          <div class="device"><div class="ico">🗣️</div><div><strong>Plaud 等录音设备</strong><small>文章列为首发或接入品牌</small></div></div>
+          <div class="device wide"><div class="ico">📱</div><div><strong>其他入口</strong><small>影石、安克、耳机、键鼠、PC / 平板、智能穿戴、手机</small></div></div>
+        </div>
+        <div class="arrow"><label>音频 / 图像 / 按键 / 文本</label></div>
+        <div class="node gray"><strong>厂商 App、设备服务或设备 SDK</strong><small>设备侧具体 BLE、Wi‑Fi、音频链路和私有协议尚未由公开资料确认</small></div>
+      </section>
+      <section class="region platform">
+        <h2><span>②</span> WorkBuddy 开放平台与 Agent 层</h2>
+        <div class="stack">
+          <div class="node blue"><strong>硬件接入应用</strong><small>注册硬件应用、配置权限与 OAuth 回调、提交审核</small><div class="protocols"><span class="pill blue">OAuth 2.1</span><span class="pill blue">HTTPS</span><span class="pill blue">Open API</span></div></div>
+          <div class="arrow"><label>授权后调用</label></div>
+          <div class="node blue"><strong>WorkBuddy Open API</strong><small>用户授权、云端任务、本地助理、会话产物</small><div class="protocols"><span class="pill blue">access_token</span><span class="pill blue">任务 API</span><span class="pill blue">本地助理 API</span></div></div>
+          <div class="arrow"><label>实时 / 工具调用</label></div>
+          <div class="node green"><strong>Agent 运行环境</strong><small>理解 → 规划 → 工具调用 → 生成结果</small><div class="protocols"><span class="pill green">ACP 双向通道</span><span class="pill green">MCP</span><span class="pill green">Skill</span></div></div>
+          <div class="node gray"><strong>跨端状态与产物</strong><small>任务、记忆、媒体、总结和执行结果</small></div>
+        </div>
+      </section>
+      <section class="region clients">
+        <h2><span>③</span> WorkBuddy 终端与结果交付</h2>
+        <div class="stack">
+          <div class="node green"><strong>PC WorkBuddy / 本地助理</strong><small>接收消息、执行本机任务、回传会话历史</small></div>
+          <div class="arrow"><label>结果同步</label></div>
+          <div class="node green"><strong>移动端 / Web / 平板</strong><small>继续对话、查看任务、读取产物</small></div>
+          <div class="arrow"><label>用户确认 / 反馈</label></div>
+          <div class="node gray"><strong>硬件端反馈</strong><small>语音播报、眼镜显示、录音状态或按键交互</small></div>
+          <div class="node"><strong>外部连接器与业务系统</strong><small>MCP：远程 HTTPS / SSE / Streamable HTTP；本地 stdio</small><div class="protocols"><span class="pill green">MCP</span><span class="pill">OAuth 2.1 + PKCE</span></div></div>
+        </div>
+      </section>
+    </section>
+    <div class="legend"><span><i style="background:#fff0d9"></i>硬件与厂商侧</span><span><i style="background:#dceeff"></i>官方平台接口</span><span><i style="background:#dff5e9"></i>Agent / 终端能力</span><span><i style="background:#eef1f5"></i>信息未公开或边界说明</span></div>
+    <section class="foot">
+      <div class="note"><strong>已证实：</strong>硬件接入应用、OAuth 2.1、HTTPS Open API、云端任务、ACP 实时双向通道、PC 本地助理 API，以及 MCP 连接器接入方式。</div>
+      <div class="note unknown"><strong>未证实：</strong>各品牌设备到厂商 App / 云服务的具体 SDK、BLE / Wi‑Fi / WebSocket 选择、音频格式和设备控制报文。</div>
+    </section>
+  </main>
+</body>
+</html>

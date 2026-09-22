@@ -1,0 +1,34 @@
+---
+title: "快速开始"
+description: "用一个最小流程了解如何定义设备接口、验证方法并执行操作。"
+---
+
+ALL 的基本流程由接口定义、编译、仿真和执行组成。FSP 不限定设备接口使用 HTTP、CLI、MCP、RPC 还是 SDK，但每个接口都要写清对象、操作和系统三部分信息。
+
+## 1. 定义设备接口
+
+为每项设备操作声明目标容器、操作参数、设备条件和结果结构。以加液为例：对象描述目标容器的无盖状态与剩余容量；操作部分说明液体来源和加液量；系统描述设备空闲状态与安全限制。
+
+```json
+{
+  "object": {"required_container_state": "无盖"},
+  "operation": {"operation_id": "add_liquid", "contract_version": "1", "parameters": {"volume_mL": {"type": "number", "minimum": 0.05, "maximum": 0.8, "unit": "mL"}}, "completion_scope": "sample_effect"},
+  "system": {"required_device_state": "idle", "safety_fences": ["容器容量足够"]}
+}
+```
+
+## 2. 编译和仿真
+
+上例是说明性定义片段，不是完整 Schema 或可执行请求。完整定义还必须说明来源和目标角色、证据来源、允许误差及完成条件；调用示例见[接口定义](/docs/specification/device-integration/overview)。
+
+编译/解释器把研究目标和实际容器状态转换为参数类型明确的执行步骤；仿真器在不影响真实设备的测试环境中检查参数范围、容器容量、状态变化和安全限制。只有仿真通过的步骤才能交给执行器。
+
+## 3. 执行并核验
+
+执行器将每一步的对象、操作、系统输入提交给设备现有接口或适配层，并取得同样三段的实际响应：对象给出容器变化，操作给出执行结果，系统给出设备状态、安全检查和任务信息。
+
+异步操作在系统段返回任务信息。任务查询、取消和结果获取由实际调用方式提供等价能力；FSP 只要求每次结果返回都保持对象、操作、系统三部分。
+
+更多字段和示例见[请求与响应格式](/docs/specification/base-protocol)、[操作](/docs/specification/fsp/operations)和[接口定义](/docs/specification/device-integration/overview)。
+
+任务已受理，不代表已经完成；文档写了支持，也不代表设备现在可以执行。改变状态的请求必须携带相关版本号和幂等键；遇到超时或未知结果，先查询原任务并核实，不重新发起动作。具体规则见[任务状态与异常恢复](/docs/specification/fsp/lifecycle)。
