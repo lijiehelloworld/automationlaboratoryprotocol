@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080" role="img" aria-labelledby="title desc">
+  <title id="title">FSP 服务实现与设备接口架构</title>
+  <desc id="desc">上层函数调用依次经过动作契约、能力门控和 Adapter，再通过同时表达操作、对象和系统三个维度的设备接口连接驱动与物理设备。</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#173B78" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2959A8"/>
+    </marker>
+    <style>
+      .ink { fill: #102A56; }
+      .muted { fill: #53657D; }
+      .title { font: 700 42px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; letter-spacing: .5px; }
+      .subtitle { font: 400 21px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .layer-title { font: 700 29px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .card-title { font: 700 27px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .body { font: 400 22px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .small { font: 500 18px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .chip { font: 600 18px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .line { stroke: #2959A8; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .icon-line { stroke: #FFFFFF; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1080" fill="#F7F9FC"/>
+
+  <text x="80" y="65" class="title ink">FSP 函数状态协议</text>
+  <text x="80" y="101" class="subtitle muted">把上层函数调用变成可检查、可执行、可核对结果的设备动作</text>
+
+  <g filter="url(#shadow)">
+    <rect x="360" y="132" width="880" height="104" rx="24" fill="#FFFFFF" stroke="#C8D5E8" stroke-width="2"/>
+  </g>
+  <circle cx="430" cy="184" r="30" fill="#155EEF"/>
+  <path d="M416 184h28M430 170v28M418 174l24 20M442 174l-24 20" class="icon-line"/>
+  <text x="482" y="178" class="card-title ink">ALL 执行器 · AI Agent · 业务程序</text>
+  <text x="482" y="210" class="body muted">发起函数调用，提供目标设备、参数和预期状态</text>
+
+  <path d="M800 236V278" class="line"/>
+  <rect x="614" y="245" width="372" height="34" rx="17" fill="#E8F0FF"/>
+  <text x="800" y="268" text-anchor="middle" class="chip" fill="#155EEF">HTTP · MCP · CLI · RPC · SDK</text>
+
+  <rect x="70" y="294" width="1460" height="388" rx="32" fill="#EAF1FF" stroke="#8EB2F5" stroke-width="2.5"/>
+  <text x="112" y="342" class="layer-title ink">FSP 服务实现</text>
+  <text x="368" y="342" class="body muted">三部分依次工作，不能跳过门控直接调用设备</text>
+
+  <g filter="url(#shadow)">
+    <rect x="118" y="378" width="386" height="238" rx="24" fill="#FFFFFF"/>
+    <rect x="607" y="378" width="386" height="238" rx="24" fill="#FFFFFF"/>
+    <rect x="1096" y="378" width="386" height="238" rx="24" fill="#FFFFFF"/>
+  </g>
+
+  <circle cx="170" cy="432" r="30" fill="#155EEF"/>
+  <rect x="157" y="417" width="26" height="32" rx="3" class="icon-line"/>
+  <path d="M163 426h14M163 434h14M163 442h9" class="icon-line"/>
+  <text x="218" y="425" class="card-title ink">动作契约</text>
+  <text x="218" y="454" class="small muted">Action Contract</text>
+  <circle cx="153" cy="495" r="4" fill="#155EEF"/><text x="169" y="502" class="body muted">动作名称与版本</text>
+  <circle cx="153" cy="533" r="4" fill="#155EEF"/><text x="169" y="540" class="body muted">参数、前置条件与结果</text>
+  <circle cx="153" cy="571" r="4" fill="#155EEF"/><text x="169" y="578" class="body muted">完成条件与实际证据</text>
+
+  <circle cx="659" cy="432" r="30" fill="#F59E0B"/>
+  <path d="M646 432l9 9 18-20M640 413h38v38h-38z" class="icon-line"/>
+  <text x="707" y="425" class="card-title ink">能力门控</text>
+  <text x="707" y="454" class="small muted">Capability Gate</text>
+  <circle cx="642" cy="495" r="4" fill="#F59E0B"/><text x="658" y="502" class="body muted">硬件支持 · 代码实现</text>
+  <circle cx="642" cy="533" r="4" fill="#F59E0B"/><text x="658" y="540" class="body muted">配置、标定与权限</text>
+  <circle cx="642" cy="571" r="4" fill="#F59E0B"/><text x="658" y="578" class="body muted">当前状态、版本与资源</text>
+
+  <circle cx="1148" cy="432" r="30" fill="#7C3AED"/>
+  <path d="M1134 420l9-6 10 6v12l-10 6-9-6zM1153 432l9-6 10 6v12l-10 6-9-6z" class="icon-line"/>
+  <text x="1196" y="425" class="card-title ink">Adapter</text>
+  <text x="1196" y="454" class="small muted">适配器</text>
+  <circle cx="1131" cy="495" r="4" fill="#7C3AED"/><text x="1147" y="502" class="body muted">单位、坐标与参数转换</text>
+  <circle cx="1131" cy="533" r="4" fill="#7C3AED"/><text x="1147" y="540" class="body muted">调用指定设备驱动</text>
+  <circle cx="1131" cy="571" r="4" fill="#7C3AED"/><text x="1147" y="578" class="body muted">解释回执、读数与故障</text>
+
+  <path d="M504 497H584" class="line"/>
+  <path d="M993 497H1073" class="line"/>
+  <text x="544" y="479" text-anchor="middle" class="small" fill="#2959A8">校验</text>
+  <text x="1033" y="479" text-anchor="middle" class="small" fill="#2959A8">放行</text>
+
+  <path d="M800 682V724" class="line"/>
+  <rect x="650" y="691" width="300" height="34" rx="17" fill="#FFF4DC"/>
+  <text x="800" y="714" text-anchor="middle" class="chip" fill="#A45C00">调用与结果必须完整表达</text>
+
+  <rect x="70" y="740" width="1460" height="212" rx="32" fill="#EFFAF5" stroke="#8BD5AF" stroke-width="2.5"/>
+  <text x="112" y="789" class="layer-title ink">底层设备接口</text>
+  <text x="392" y="789" class="body muted">一次调用同时表达三个维度，而不是三个独立服务</text>
+
+  <rect x="126" y="820" width="410" height="94" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
+  <circle cx="178" cy="867" r="25" fill="#159B62"/>
+  <path d="M167 867h22M178 856v22M168 857l20 20" class="icon-line"/>
+  <text x="221" y="859" class="card-title ink">操作</text>
+  <text x="221" y="890" class="body muted">参数 · 结果 · 诊断 · 证据</text>
+
+  <rect x="595" y="820" width="410" height="94" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
+  <circle cx="647" cy="867" r="25" fill="#159B62"/>
+  <path d="M635 856l12-7 12 7v22l-12 7-12-7zM635 856l12 7 12-7M647 863v22" class="icon-line"/>
+  <text x="690" y="859" class="card-title ink">对象</text>
+  <text x="690" y="890" class="body muted">容器 · 样品 · 状态 · 变化</text>
+
+  <rect x="1064" y="820" width="410" height="94" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
+  <circle cx="1116" cy="867" r="25" fill="#159B62"/>
+  <path d="M1103 859l13-7 13 7v11c0 9-6 15-13 18-7-3-13-9-13-18zM1110 869l5 5 9-11" class="icon-line"/>
+  <text x="1159" y="859" class="card-title ink">系统</text>
+  <text x="1159" y="890" class="body muted">设备状态 · 安全 · 任务 · 资源</text>
+
+  <path d="M800 952V986" class="line"/>
+  <g filter="url(#shadow)">
+    <rect x="330" y="994" width="940" height="66" rx="20" fill="#FFFFFF" stroke="#C8D5E8" stroke-width="2"/>
+  </g>
+  <path d="M380 1020h42v20h-42zM388 1011h26v9M392 1032h4M402 1032h12" stroke="#2959A8" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="450" y="1035" class="card-title ink">厂商驱动 / 硬件服务 / 物理设备</text>
+</svg>

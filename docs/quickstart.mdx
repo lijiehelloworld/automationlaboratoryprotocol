@@ -3,7 +3,7 @@ title: "快速开始"
 description: "用一个最小流程了解如何定义设备接口、验证方法并执行操作。"
 ---
 
-ALL 的基本流程由接口定义、编译、仿真和执行组成。FSP 不限定设备接口使用 HTTP、CLI、MCP、RPC 还是 SDK，但每个接口都要写清对象、操作和系统三部分信息。
+ALL 的基本流程由接口定义、编译、仿真和执行组成。FSP 服务先用动作契约解析请求，再通过能力门控和 Adapter 调用设备。底层设备接口要同时表达操作、对象和系统三个维度。
 
 ## 1. 定义设备接口
 
@@ -29,6 +29,6 @@ ALL 的基本流程由接口定义、编译、仿真和执行组成。FSP 不限
 
 异步操作在系统段返回任务信息。任务查询、取消和结果获取由实际调用方式提供等价能力；FSP 只要求每次结果返回都保持对象、操作、系统三部分。
 
-更多字段和示例见[请求与响应格式](/docs/specification/base-protocol)、[操作](/docs/specification/fsp/operations)和[接口定义](/docs/specification/device-integration/overview)。
+更多字段和示例见[请求与响应格式](/docs/specification/base-protocol)、[操作](/docs/specification/device-integration/operations)和[接口定义](/docs/specification/device-integration/overview)。
 
 任务已受理，不代表已经完成；文档写了支持，也不代表设备现在可以执行。改变状态的请求必须携带相关版本号和幂等键；遇到超时或未知结果，先查询原任务并核实，不重新发起动作。具体规则见[任务状态与异常恢复](/docs/specification/fsp/lifecycle)。

@@ -2,7 +2,7 @@
 
 AI-native Laboratory Language（ALL，AI 原生实验室语言）规范文档。
 
-ALL 语言引擎由编译/解释器、仿真器和执行器组成；其设备通信部分 FSP 从对象、控制和系统三个维度约束设备接口。FSP 不限定接口承载方式，HTTP、CLI、MCP、RPC 和厂商 SDK 均可使用。
+ALL 语言引擎由编译/解释器、仿真器和执行器组成。FSP 服务通过动作契约、能力门控和 Adapter 调用设备；底层设备接口从操作、对象和系统三个维度表达请求与结果。HTTP、CLI、MCP、RPC 和厂商 SDK 均可作为承载方式。
 
 ## 本地预览
 

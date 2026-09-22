@@ -46,18 +46,17 @@
             "group": "FSP 函数状态协议",
             "pages": [
               "docs/specification/fsp/overview",
-              "docs/specification/fsp/capabilities",
-              "docs/specification/fsp/operations",
-              "docs/specification/fsp/objects",
-              "docs/specification/fsp/system",
-              "docs/specification/fsp/lifecycle"
+              "docs/specification/fsp/action-contract",
+              "docs/specification/fsp/capability-gating",
+              "docs/specification/fsp/adapter"
             ]
           },
           {
-            "group": "设备",
+            "group": "设备接口",
             "pages": [
-              "docs/specification/device-integration/overview",
-              "docs/specification/device-integration/python-example"
+              "docs/specification/device-integration/operations",
+              "docs/specification/device-integration/objects",
+              "docs/specification/device-integration/system"
             ]
           },
           {
@@ -165,16 +164,44 @@
       "destination": "/docs/specification/fsp/overview"
     },
     {
+      "source": "/specification/fsp/capabilities",
+      "destination": "/docs/specification/fsp/action-contract"
+    },
+    {
+      "source": "/specification/device-integration/python-example",
+      "destination": "/docs/specification/fsp/adapter"
+    },
+    {
       "source": "/specification/fsp/operations",
-      "destination": "/docs/specification/fsp/operations"
+      "destination": "/docs/specification/device-integration/operations"
     },
     {
       "source": "/specification/fsp/objects",
-      "destination": "/docs/specification/fsp/objects"
+      "destination": "/docs/specification/device-integration/objects"
     },
     {
       "source": "/specification/fsp/system",
-      "destination": "/docs/specification/fsp/system"
+      "destination": "/docs/specification/device-integration/system"
+    },
+    {
+      "source": "/docs/specification/fsp/capabilities",
+      "destination": "/docs/specification/fsp/action-contract"
+    },
+    {
+      "source": "/docs/specification/device-integration/python-example",
+      "destination": "/docs/specification/fsp/adapter"
+    },
+    {
+      "source": "/docs/specification/fsp/operations",
+      "destination": "/docs/specification/device-integration/operations"
+    },
+    {
+      "source": "/docs/specification/fsp/objects",
+      "destination": "/docs/specification/device-integration/objects"
+    },
+    {
+      "source": "/docs/specification/fsp/system",
+      "destination": "/docs/specification/device-integration/system"
     },
     {
       "source": "/specification/device-integration/overview",
