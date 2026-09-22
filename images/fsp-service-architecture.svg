@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080" role="img" aria-labelledby="title desc">
   <title id="title">FSP 服务实现与设备接口架构</title>
-  <desc id="desc">上层函数调用依次经过动作契约、能力门控和适配器。FSP 要求厂商设备接口必须包含操作、对象和系统三个维度的内容，再连接厂商驱动、硬件服务与物理设备。</desc>
+  <desc id="desc">上层函数调用依次经过动作契约、能力门控和适配器。FSP 要求设备仪器接口必须包含操作、对象和系统三个维度的内容，再连接接口实现、驱动、硬件服务与物理设备。</desc>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#173B78" flood-opacity="0.10"/>
@@ -82,34 +82,34 @@
 
   <path d="M800 682V724" class="line"/>
   <rect x="650" y="691" width="300" height="34" rx="17" fill="#FFF4DC"/>
-  <text x="800" y="714" text-anchor="middle" class="chip" fill="#A45C00">厂商接口必须完整提供</text>
+  <text x="800" y="714" text-anchor="middle" class="chip" fill="#A45C00">设备仪器接口必须完整提供</text>
 
-  <rect x="70" y="740" width="1460" height="330" rx="32" fill="#EFFAF5" stroke="#8BD5AF" stroke-width="2.5"/>
-  <text x="112" y="789" class="layer-title ink">厂商设备接口</text>
-  <text x="330" y="789" class="body muted">厂商接口必须包含操作、对象、系统三方面内容</text>
+  <rect x="70" y="740" width="1460" height="280" rx="32" fill="#EFFAF5" stroke="#8BD5AF" stroke-width="2.5"/>
+  <text x="112" y="780" class="layer-title ink">设备仪器接口</text>
+  <text x="330" y="780" class="body muted">接口必须包含操作、对象、系统三方面内容</text>
 
-  <rect x="126" y="820" width="410" height="94" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
-  <circle cx="178" cy="867" r="25" fill="#159B62"/>
-  <path d="M167 867h22M178 856v22M168 857l20 20" class="icon-line"/>
-  <text x="221" y="859" class="card-title ink">操作</text>
-  <text x="221" y="890" class="body muted">参数 · 结果 · 诊断 · 证据</text>
+  <rect x="126" y="800" width="410" height="82" rx="18" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
+  <circle cx="178" cy="841" r="23" fill="#159B62"/>
+  <path d="M167 841h22M178 830v22M168 831l20 20" class="icon-line"/>
+  <text x="221" y="833" class="card-title ink">操作</text>
+  <text x="221" y="864" class="body muted">参数 · 结果 · 诊断 · 证据</text>
 
-  <rect x="595" y="820" width="410" height="94" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
-  <circle cx="647" cy="867" r="25" fill="#159B62"/>
-  <path d="M635 856l12-7 12 7v22l-12 7-12-7zM635 856l12 7 12-7M647 863v22" class="icon-line"/>
-  <text x="690" y="859" class="card-title ink">对象</text>
-  <text x="690" y="890" class="body muted">容器 · 样品 · 状态 · 变化</text>
+  <rect x="595" y="800" width="410" height="82" rx="18" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
+  <circle cx="647" cy="841" r="23" fill="#159B62"/>
+  <path d="M635 830l12-7 12 7v22l-12 7-12-7zM635 830l12 7 12-7M647 837v22" class="icon-line"/>
+  <text x="690" y="833" class="card-title ink">对象</text>
+  <text x="690" y="864" class="body muted">容器 · 样品 · 状态 · 变化</text>
 
-  <rect x="1064" y="820" width="410" height="94" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
-  <circle cx="1116" cy="867" r="25" fill="#159B62"/>
-  <path d="M1103 859l13-7 13 7v11c0 9-6 15-13 18-7-3-13-9-13-18zM1110 869l5 5 9-11" class="icon-line"/>
-  <text x="1159" y="859" class="card-title ink">系统</text>
-  <text x="1159" y="890" class="body muted">设备状态 · 安全 · 任务 · 资源</text>
+  <rect x="1064" y="800" width="410" height="82" rx="18" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
+  <circle cx="1116" cy="841" r="23" fill="#159B62"/>
+  <path d="M1103 833l13-7 13 7v11c0 9-6 15-13 18-7-3-13-9-13-18zM1110 843l5 5 9-11" class="icon-line"/>
+  <text x="1159" y="833" class="card-title ink">系统</text>
+  <text x="1159" y="864" class="body muted">设备状态 · 安全 · 任务 · 资源</text>
 
-  <path d="M800 952V986" class="line"/>
+  <path d="M800 882V914" class="line"/>
   <g filter="url(#shadow)">
-    <rect x="330" y="994" width="940" height="66" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
+    <rect x="330" y="920" width="940" height="66" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
   </g>
-  <path d="M380 1020h42v20h-42zM388 1011h26v9M392 1032h4M402 1032h12" stroke="#2959A8" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="450" y="1035" class="card-title ink">厂商接口实现 / 驱动 / 硬件服务 / 物理设备</text>
+  <path d="M380 946h42v20h-42zM388 937h26v9M392 958h4M402 958h12" stroke="#2959A8" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="450" y="961" class="card-title ink">接口实现 / 驱动 / 硬件服务 / 物理设备</text>
 </svg>
