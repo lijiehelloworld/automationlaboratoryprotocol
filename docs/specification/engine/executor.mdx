@@ -118,18 +118,7 @@ def execute(plan, simulation_result):
 
 ## 每一步怎样放行
 
-```mermaid
-flowchart TD
-    A[计划与仿真记录] --> B[当前能力与状态快照]
-    B --> C{运行时校验通过?}
-    C -->|否| D[诊断与重新确认]
-    C -->|是| E[幂等提交]
-    E --> F[查询原计划与任务]
-    F --> G{完成证据充分?}
-    G -->|是| H[保存实际结果]
-    G -->|尚在执行| F
-    G -->|失败或不明| I[保留部分结果并停止依赖步骤]
-```
+![执行与证据核对](/images/all-executor-flow-gptimage.png)
 
 FSP 服务执行到某一步时，至少按以下顺序检查：
 
