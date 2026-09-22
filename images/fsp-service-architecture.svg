@@ -106,7 +106,6 @@
   <text x="1159" y="833" class="card-title ink">系统</text>
   <text x="1159" y="864" class="body muted">设备状态 · 安全 · 任务 · 资源</text>
 
-  <path d="M800 882V914" class="line"/>
   <g filter="url(#shadow)">
     <rect x="330" y="920" width="940" height="66" rx="20" fill="#FFFFFF" stroke="#AFDCC4" stroke-width="2"/>
   </g>
