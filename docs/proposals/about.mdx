@@ -1,10 +1,23 @@
 ---
 title: "关于改进提案"
-description: "说明哪些问题适合通过提案推动规范改进。"
+description: "在 GitCode 讨论 ALL 规范的重要变化，记录设计、评审和发布结果。"
 ---
 
-改进提案用于记录对协议、数据结构或治理流程的重大变更建议。错误修正和不改变规范含义的文字调整可以直接通过普通变更提交。
+改进提案用于讨论会改变 ALL 规范含义或影响现有实现的设计。提案在 [GitCode Issue](https://gitcode.com/mimedal/all/issues) 中提出和评审，具体修改通过[合并请求](https://gitcode.com/mimedal/all/pulls)提交。
 
-提案至少应说明：问题、目标、非目标、协议变化、兼容性、安全影响、迁移方式和备选方案。
+## 哪些修改需要提案
+
+- 调整语言引擎、FSP 和设备仪器接口之间的职责。
+- 改变动作、状态、参数、结果或错误的含义。
+- 新增必填字段、检查条件或符合性要求。
+- 改变兼容方式、版本规则或社区协作流程。
+
+错别字、失效链接和不改变规范含义的说明补充，可按[贡献指南](/docs/community/contributing)直接提交合并请求。
+
+## 如何开始
+
+先搜索已有 Issue，避免重复讨论。没有相同问题时，使用[提案模板](/docs/proposals/template)整理内容，以“[提案] 具体标题”创建 Issue。说明当前问题、建议改法、对现有实现的影响，以及如何验证。
+
+后续讨论、合并请求和发布结果应关联同一条 Issue。完整步骤见[提案流程](/docs/proposals/process)，平台操作见[创建 Issue](https://docs.gitcode.com/docs/help/home/org_project/issue/create_issue/)。
 
 提案被接受不代表立即进入已发布规范；只有进入明确版本并完成发布，才形成实现需要遵守的要求。

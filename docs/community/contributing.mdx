@@ -1,7 +1,29 @@
 ---
 title: "贡献指南"
-description: "说明如何提交文档或规范修改并完成检查。"
+description: "在 GitCode 提交文档、参考代码与测试修改，并提供必要的验证记录。"
 ---
+
+## 提交修改
+
+小型文字修正可以直接提交合并请求。新增接口、改变语义或影响符合性的修改，应先按[提案流程](/docs/proposals/process)在 [GitCode Issue](https://gitcode.com/mimedal/all/issues) 中讨论。
+
+1. 从 [GitCode 主仓库](https://gitcode.com/mimedal/all)创建个人 Fork，在独立分支中修改。
+2. 保持一次修改围绕一个明确问题，同时更新受影响的链接、示例和测试。
+3. 完成检查后，向主仓库的 `main` 分支提交[合并请求](https://gitcode.com/mimedal/all/pulls)。
+4. 在描述中写明修改原因、关联 Issue、主要变化和验证结果；收到评审意见后在同一分支补充修改。
+
+平台操作见 [Fork 工作流](https://docs.gitcode.com/docs/help/home/org_project/pullrequests/pr-fork/)和[创建合并请求](https://docs.gitcode.com/docs/help/home/org_project/pullrequests/pr-create/)。已有写入权限的贡献者也应通过分支和合并请求提交供评审的修改。
+
+## 文件放在哪里
+
+- 正式规范页面放在 `docs/`，正式站点图片放在 `images/`。
+- 参考实现放在 `examples/`，对应测试放在 `tests/`，由 GitCode 源仓库收录。
+- 页面移动或新增时，同步更新 `docs.json` 中的导航、内部链接和必要的旧地址重定向。
+- 本地草稿、研究原件、临时文件和未经授权的资料不提交到任何仓库。
+
+GitHub 仅接收文档发布镜像，不作为贡献提交入口。
+
+## 提交前检查
 
 提交变更前请确认：
 
@@ -11,4 +33,18 @@ description: "说明如何提交文档或规范修改并完成检查。"
 4. 中文术语在全文中保持一致。
 5. 不把单一产品、驱动或实验流程写成通用规范要求。
 
-小型文字修正可以直接提交。新增接口、改变语义或影响符合性的修改应先走改进提案流程。
+文档修改可在仓库根目录运行：
+
+```bash
+git diff --check
+npx mint validate
+npx mint broken-links
+```
+
+修改 Python 参考实现或测试时，再运行：
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+在合并请求中记录实际执行的命令和结果。涉及设备的功能，应说明使用的是模拟环境还是真实设备，以及尚未验证的边界；模拟测试通过不代表设备验收通过。
