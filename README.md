@@ -8,6 +8,8 @@ ALL 语言引擎从 FSP 获取设备能力、使用边界和约束，通过智�
 
 FSP 三部分的示例实现位于 GitCode 的 [`examples/fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/examples/fsp_three_parts.py)，对应测试位于 [`tests/test_fsp_three_parts.py`](https://gitcode.com/mimedal/all/blob/main/tests/test_fsp_three_parts.py)。Mintlify 文档说明处理逻辑和协作流程。
 
+语言引擎示例见 [GitCode：运行说明与源码索引](https://gitcode.com/mimedal/all/blob/main/examples/language_engine/README.md)，涵盖编译/解释、仿真反馈、任务提交与结果跟踪。对应测试位于 [`tests/test_language_engine.py`](https://gitcode.com/mimedal/all/blob/main/tests/test_language_engine.py)。源码与测试仅进入 GitCode，Mintlify 文档通过链接引用。
+
 ## 本地预览
 
 安装 Node.js 20 或更高版本，然后在仓库根目录运行：
@@ -65,6 +67,7 @@ ALL/
 | `docs.json` | 是 | 作为网站配置使用 |
 | `README.md`、`.mintignore` | 是 | 进入 GitHub 文档镜像 |
 | `scripts/`、`.gitignore` | 是 | 否 |
+| `examples/`、`tests/` | 是 | 否，正式文档链接到 GitCode 源码 |
 | `AGENTS.md`、`planning/`、`references/`、`artifacts/`、`drafts/`、`tmp/`、`temp/` | 否，仅本地保存 | 否 |
 | 依赖、缓存、编辑器配置 | 否 | 否 |
 

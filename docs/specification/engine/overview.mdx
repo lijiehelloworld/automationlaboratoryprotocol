@@ -76,3 +76,27 @@ flowchart TD
 这些结构可以嵌套。实现应声明支持的结构，对不支持的结构返回明确诊断。并行任务必须满足设备和资源互斥要求；保护区间结束或中断时，应根据设备实际状态释放资源。
 
 继续阅读：[编译/解释器](/docs/specification/engine/compiler)、[仿真器](/docs/specification/engine/simulator)、[执行器](/docs/specification/engine/executor)。
+
+## 完整流程示例
+
+以“向允许使用的容器加液 0.5 mL”为例：第一轮选择容量为 0.3 mL 的空容器，仿真返回容量不足；根据诊断改选容量为 2 mL 的空容器，保留加液目标，再次检查通过后交给执行器。
+
+```text
+从 FSP 读取设备能力、边界、约束和对象初态
+生成候选流程
+在规定次数内重复：
+  检查动作绑定、参数和流程结构
+  计算预测变化并检查约束
+  若通过：保存验证记录，结束修订
+  否则：反馈出错步骤和原因，修订候选流程
+执行器查询最新状态并确认设备可用
+向 FSP 提交任务，跟踪结果和完成证据
+```
+
+| 内容 | 源码 |
+| --- | --- |
+| 完整运行方式与预期结果 | [示例说明](https://gitcode.com/mimedal/all/blob/main/examples/language_engine/README.md) |
+| 候选流程与仿真反馈 | [流程入口](https://gitcode.com/mimedal/all/blob/main/examples/language_engine/demo.py) |
+| 正常流程和拒绝路径 | [验证用例](https://gitcode.com/mimedal/all/blob/main/tests/test_language_engine.py) |
+
+示例使用本地模拟设备和固定候选流程，运行不需要模型服务或设备连接。

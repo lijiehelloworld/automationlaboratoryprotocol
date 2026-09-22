@@ -4,6 +4,10 @@
 /README.md
 /planning/
 
+# 示例实现和测试只在 GitCode 源仓库提供，文档使用链接引用。
+/examples/
+/tests/
+
 # 本地研究原件、历史产物和旧资料目录不发布，也不建立搜索索引。
 /references/
 /artifacts/

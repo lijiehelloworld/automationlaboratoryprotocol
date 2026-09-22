@@ -108,3 +108,15 @@ flowchart TD
 仿真发现问题时，Agent 收到具体步骤、违反的约束及计算结果，修订后重新进入编译/解释和仿真。执行器发现原设备不可用，需要更换设备或调整流程时，也应回到这一过程；候选设备需要重新绑定能力并验证，不能仅替换设备编号。
 
 编译完成只表示得到可验证程序，解释完成只表示得到当前证据下的程序路径；进入执行前还要完成[仿真](/docs/specification/engine/simulator)和[运行时校验](/docs/specification/engine/executor)。
+
+## 流程检查与解释示例
+
+| 处理逻辑 | 示例行为 |
+| --- | --- |
+| 动作绑定 | 根据设备和动作查找能力定义，检查参数和对象角色；未登记动作返回诊断 |
+| 条件分支 | 先检查两个分支的结构，运行时依据有效观测只选择一条路径 |
+| 有界循环 | 每轮读取更新后的状态，达到条件即结束；超过规定次数返回未收敛 |
+| 证据缺失 | 条件值未知时停止解释，返回缺失证据的步骤 |
+| 任务分段 | 向执行器交付当前已确定的步骤，取得后续观测后再解释下一段 |
+
+对应实现见 [编译/解释逻辑](https://gitcode.com/mimedal/all/blob/main/examples/language_engine/compiler.py) 和 [共享动作检查](https://gitcode.com/mimedal/all/blob/main/examples/language_engine/model.py)。[验证用例](https://gitcode.com/mimedal/all/blob/main/tests/test_language_engine.py)覆盖动作缺失、参数越界、分支选择、未知条件和循环未收敛。
