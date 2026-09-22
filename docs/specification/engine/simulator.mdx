@@ -1,158 +1,101 @@
 ---
 title: "仿真器"
-description: "说明如何在不动设备时检查步骤、状态和安全限制。"
+description: "在隔离状态中先检查条件，再提交预测变化，把问题定位到具体步骤。"
 ---
 
-## 职责
+仿真器回答“这套步骤是否符合已编码的操作规则”。它读取经过准入的程序、能力版本和对象初态，在独立状态副本中逐步运行。当前实现以规则和状态检查为主，不是化学反应或设备动力学模型。
 
-仿真器接收编译后的中间程序，在不影响真实设备的测试环境中逐步计算对象变化和系统条件。它用于发现参数越界、状态不闭合、资源冲突和不可满足的完成条件，不产生真实设备动作。
+## 先检查，再更新
 
-## 输入
+动作先收集全部适用条件，再决定是否提交状态效果。必检条件失败时，受影响的预测状态保持不变；诊断日志可以追加。建议条件形成警告，并保留处理结论。
 
-```json
-{
-  "program_id": "program-001",
-  "definition_revisions": {
-    "device-01": "12"
-  },
-  "initial_state": {
-    "objects": {
-      "container-01": {
-        "container_status": "无盖",
-        "sample_status": "空",
-        "sample_volume_mL": 0,
-        "revision": "object-21"
-      },
-      "source-01": {
-        "sample_status": "液体",
-        "sample_volume_mL": 10,
-        "revision": "source-8"
-      }
-    },
-    "systems": {
-      "device-01": {
-        "state": "idle",
-        "available": true,
-        "revision": "system-21"
-      }
-    }
-  },
-  "steps": [
-    {
-      "step_id": "step-1",
-      "device_id": "device-01",
-      "object": {
-        "containers": [
-          {
-            "container_id": "source-01",
-            "role": "source",
-            "expected_revision": "source-8"
-          },
-          {
-            "container_id": "container-01",
-            "role": "target",
-            "expected_revision": "object-21",
-            "before_state": {
-              "container_status": "无盖"
-            }
-          }
-        ]
-      },
-      "operation": {
-        "operation_id": "add_liquid",
-        "contract_version": "1",
-        "parameters": {
-          "source_container_id": "source-01",
-          "volume_mL": 0.5
-        }
-      },
-      "system": {
-        "expected_definition_revision": "12",
-        "expected_system_revision": "system-21",
-        "expected_device_state": "idle",
-        "execution_mode": "async"
-      }
-    }
-  ]
-}
+```mermaid
+flowchart TD
+    A[动作与预测状态] --> B[检查参数 对象 设备约束]
+    B --> C{必检项通过?}
+    C -->|否| D[保留对象状态并返回诊断]
+    C -->|是| E[在副本中计算效果]
+    E --> F[检查结果与状态一致性]
+    F --> G{有效?}
+    G -->|否| D
+    G -->|是| H[提交预测状态并记录步骤]
 ```
 
-| 输入 | 作用 |
-| --- | --- |
-| `definition_revisions` | 确保仿真与编译使用同一份设备定义 |
-| `initial_state.objects` | 提供容器和样品的可计算初态 |
-| `initial_state.systems` | 提供设备状态及可用性 |
-| `steps[]` | 提供待验证的操作顺序、依赖和参数 |
+以下可运行 Python 示例演示无损加液。体积可加和是示例假设，不代表真实测量：
 
-## 仿真过程
+```python
+from copy import deepcopy
+from math import isfinite
 
-仿真器按照以下顺序处理每个步骤：
-
-1. 确认操作与设备定义版本一致；
-2. 根据输入 Schema 检查类型、必填项、范围和枚举；
-3. 检查容器类型、容积、当前状态和操作执行前条件；
-4. 检查设备状态、安全限制及并发冲突；
-5. 在隔离副本中应用声明的状态转换；
-6. 检查完成条件、结果 Schema 和后续步骤执行前条件；
-7. 汇总规则是否能由程序检查、物理约束与科学语义诊断。
-
-仿真只使用设备定义中明确声明的规则。无法仿真的物理现象必须标记为需要执行后验证，不能被假定为成功。
-
-## 输出
-
-```json
-{
-  "program_id": "program-001",
-  "simulation_id": "simulation-001",
-  "status": "passed",
-  "checks": {
-    "type_check": "passed",
-    "parameter_check": "passed",
-    "state_closure": "passed",
-    "system_fences": "passed",
-    "scientific_semantics": "passed"
-  },
-  "predicted_state": {
-    "objects": {
-      "container-01": {
-        "container_status": "无盖",
-        "sample_status": "液体",
-        "sample_volume_mL": 0.5
-      },
-      "source-01": {
-        "sample_status": "液体",
-        "sample_volume_mL": 9.5
-      }
-    }
-  },
-  "runtime_verifications": [
-    "核对设备返回的实际加液量",
-    "重新读取目标容器的可确认状态"
-  ],
-  "diagnostics": []
-}
+def simulate_transfer(state, source, target, volume_ml):
+    """失败保留输入状态，成功返回新的预测状态。"""
+    errors = []
+    if source == target:
+        errors.append("来源和目标不能相同")
+    if source not in state or target not in state:
+        errors.append("对象未登记")
+    if (type(volume_ml) not in (int, float)
+            or not isfinite(volume_ml) or volume_ml <= 0):
+        errors.append("体积必须是有限正数，单位 mL")
+    if errors:
+        return state, errors
+    src, dst = state[source], state[target]
+    for obj in (src, dst):
+        for field in ("volume_ml", "capacity_ml"):
+            value = obj.get(field)
+            if type(value) not in (int, float) or not isfinite(value) or value < 0:
+                errors.append(f"{field} 未知或无效")
+    if errors:
+        return state, errors
+    if any(obj["volume_ml"] > obj["capacity_ml"] for obj in (src, dst)):
+        errors.append("初始体积超过容量")
+    if src["volume_ml"] < volume_ml:
+        errors.append("来源余量不足")
+    if dst["volume_ml"] + volume_ml > dst["capacity_ml"]:
+        errors.append("目标容量不足")
+    if errors:
+        return state, errors
+    predicted = deepcopy(state)
+    predicted[source]["volume_ml"] -= volume_ml
+    predicted[target]["volume_ml"] += volume_ml
+    return predicted, []
 ```
 
-## 失败处理
+实际动作还要检查容器类型、开闭状态、位置和设备专属条件。缺失规则必须列出。
 
-失败输出必须定位到具体步骤和约束：
+## 检查与诊断策略
+
+| 检查 | 典型问题 | 处理 |
+| --- | --- | --- |
+| 参数 | 单位不符、非有限数、越界 | 定位参数并拒绝状态更新 |
+| 对象 | 未登记、余量不足、状态不匹配 | 指明对象及前置条件 |
+| 顺序 | 前一步没有产生所需状态 | 返回依赖位置 |
+| 控制流 | 未知条件、循环未收敛、分支写冲突 | 按控制节点报告 |
+| 设备局部状态 | 已知开盖时启动离心 | 拒绝动作 |
+| 现场信息 | 配平、装载、锁状态缺少证据 | 列为运行时待验证项 |
+
+遇错继续模式便于收集诊断，但失败动作的效果不能提交。后续依赖失败结果的步骤应标为阻塞或带上依赖诊断，不能沿用虚构的成功状态。
 
 ```json
 {
+  "simulated": true,
   "status": "failed",
-  "failed_step_id": "step-1",
-  "diagnostics": [
-    {
-      "code": "parameter_out_of_range",
-      "path": "steps[0].operation.parameters.volume_mL",
-      "message": "volume_mL 必须位于 0.05 至 0.8 之间"
-    }
-  ]
+  "step_id": "transfer-2",
+  "object_id": "target-01",
+  "code": "capacity_exceeded",
+  "severity": "error",
+  "expected": "最终体积不超过 2 mL",
+  "observed": "预测最终体积为 3 mL",
+  "remediation": "核对容器或修改经确认的加液方案"
 }
 ```
 
-仿真失败的程序不得交给执行器。修订后的程序必须从编译/解释器重新进入仿真流程。
+生成器按诊断修订相关步骤，保留原目标与修改记录，再经过准入和仿真。不得删除失败规则来获得通过结果。更换容器、改变剂量或删除步骤时，还要重新核对科学目标。
 
-仿真使用单独保存的状态，不改变真实对象的版本。上例假设液体转移没有损失，只用来检查各步骤的体积变化，不能证明实际加液量。
+## 当前模型覆盖范围
 
-仿真结果必须标记 `simulated: true`，不能作为真实操作已经完成的依据。
+完整对象模型包含样品、数量、容器、位置、证据和来源。当前三设备生成物只推导部分设备局部状态，例如盖状态、托盘位置和配置值；没有完整容器状态链，不能据此声称已验证物料守恒或样品转移。
+
+当前生成物检查设备连续段：离开设备后不得在同一计划中回访。这属于当前计划编排约束，不是 ALL 控制流代数的普遍限制。
+
+输出同时列出已检查条件、预测状态、错误、警告和待现场验证项。无必检错误只说明已建模部分通过；`objects_current`、`system_current`、装载与配平等条件仍需现场确认。仿真记录关联具体程序和契约版本，程序或参数改变后原记录失效。

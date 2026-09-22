@@ -1,133 +1,189 @@
 ---
 title: "执行器"
-description: "说明如何向设备提交已验证步骤并确认真实执行结果。"
+description: "说明执行器如何校验、提交并跟踪一份实验计划，直到取得可核对的结果。"
 ---
 
-执行器只接收通过仿真的中间程序。每一步执行前，它重新确认实际容器状态、设备状态和安全限制，然后调用设备或适配层暴露的接口。接口调用方式可以是 HTTP、CLI、MCP、RPC 或 SDK。
+执行器接收已经通过仿真的实验计划，把计划交给 FSP 服务执行，并持续查询同一批任务的状态。它不是把一串函数直接发给设备：正式提交前还要读取当前能力和快照，核对设备、对象及现场条件；提交后要区分“已经受理”“正在执行”和“已经完成”。
 
-## 输入
+## 执行器接收什么
 
-```json
-{
-  "program_id": "program-001",
-  "simulation_id": "simulation-001",
-  "simulation_status": "passed",
-  "steps": [
-    {
-      "step_id": "step-1",
-      "device_id": "device-01",
-      "object": {
-        "containers": [
-          {
-            "container_id": "source-01",
-            "role": "source",
-            "expected_revision": "source-8"
-          },
-          {
-            "container_id": "container-01",
-            "role": "target",
-            "expected_revision": "object-21",
-            "before_state": {
-              "container_status": "无盖"
-            }
-          }
-        ]
-      },
-      "operation": {
-        "operation_id": "add_liquid",
-        "contract_version": "1",
-        "parameters": {
-          "source_container_id": "source-01",
-          "volume_mL": 0.5
-        }
-      },
-      "system": {
-        "expected_definition_revision": "12",
-        "expected_system_revision": "system-21",
-        "expected_device_state": "idle",
-        "execution_mode": "async",
-        "idempotency_key": "execution-001:step-1"
-      }
-    }
-  ]
-}
-```
-
-## 执行过程
-
-1. 确认仿真通过，且设备定义、对象和系统版本号未变化；
-2. 重新确认操作的对象、操作和系统执行前条件；
-3. 将操作、对象、系统三个维度的要求传递给符合 FSP 的厂商设备接口；
-4. 对同步结果立即核验；对异步任务通过实现提供的等价查询能力取得结果；
-5. 根据证据记录实际状态及字段质量；只有完成条件全部通过才能将步骤标为成功。
-
-## 输出
-
-下例表示设备已经停止，但缺少样品效果证据。它是未知结果而非成功；`null` 表示受影响体积暂不可确认，不表示体积为零。
+当前计划格式为 `Plan v1`。一份计划至少包含一个稳定的幂等键、按顺序排列的步骤，以及设备和对象的预期版本。
 
 ```json
 {
-  "execution_id": "execution-001",
-  "program_id": "program-001",
+  "plan_version": "1",
+  "idempotency_key": "experiment-001-plan-001",
   "steps": [
     {
-      "step_id": "step-1",
-      "object": {
-        "changes": [
-          {
-            "container_id": "source-01",
-            "after_state": {
-              "sample_volume_mL": null
-            },
-            "revision": "source-9",
-            "state_quality": {"sample_volume_mL": {"quality": "unknown", "reason": "动作后缺少体积观测", "observed_at": null}}
-          },
-          {
-            "container_id": "container-01",
-            "after_state": {
-              "sample_volume_mL": null
-            },
-            "revision": "object-22",
-            "state_quality": {"sample_volume_mL": {"quality": "unknown", "reason": "动作后缺少体积观测", "observed_at": null}}
-          }
-        ]
-      },
-      "operation": {
-        "operation_id": "add_liquid",
-        "status": "unknown",
-        "diagnostics": [
-          {
-            "code": "completion_evidence_missing",
-            "dimension": "operation",
-            "message": "设备已停止，但实际加液量尚不可确认",
-            "retryable": false
-          }
-        ],
-        "actual_parameters": {},
-        "completion_evidence": []
-      },
-      "system": {
-        "device_state": "idle",
-        "system_revision": "system-23",
-        "observed_at": "2026-09-21T02:00:20Z",
-        "task": {
-          "task_id": "task-001",
-          "status": "unknown",
-          "phase": "reconciliation"
-        },
-        "notices": [
-          "设备已确认停止，容器体积已失效，相关资源保持占用"
-        ]
-      }
+      "id": "sonicate",
+      "device_id": "site-sonicate",
+      "action": "sonicate",
+      "params": {"duration_s": 300},
+      "containers": ["sample-01"]
+    },
+    {
+      "id": "centrifuge",
+      "device_id": "site-centrifuge",
+      "action": "centrifuge_start",
+      "params": {"program_duration_s": 600, "speed_rpm": 3000},
+      "containers": ["sample-01"],
+      "preconditions": ["balanced", "lid_closed"]
     }
-  ]
+  ],
+  "max_duration_s": 1200,
+  "expected": {
+    "devices": {
+      "site-sonicate": "system-revision-31",
+      "site-centrifuge": "system-revision-18"
+    },
+    "objects": {
+      "sample-01": "object-revision-7"
+    }
+  }
 }
 ```
 
-失败、取消或未知结果时，执行器不得提交预期成功状态，必须保存设备可确认的对象状态、操作诊断和系统注意事项。
+上例只展示计划字段，编号和版本为示意值。真实执行还需确认转移、装载、配平、关盖和离心配置读回；这两步不是可以直接下发的完整实验。
 
-首次调用前，要保存本次执行及每个步骤的幂等键。网络重试使用原键；程序重启后先查询旧任务，不重新发送结果未知的动作。
+这份结构仍然表达 FSP 要求的三个维度，只是没有拆成三套接口：
 
-前一步达到完成条件后，才能执行依赖它的下一步。如果只执行了一部分，要分别保留各步骤结果。需要补救时，应把补救动作作为新操作，重新检查权限、条件和幂等键，不能假定原来的动作可以撤销。
+| 维度 | 计划中的内容 | 执行时核对的内容 |
+| --- | --- | --- |
+| 操作 | `action`、`params`、`preconditions` | 动作是否受支持、参数是否有效、完成条件是否满足 |
+| 对象 | `containers`、`expected.objects` | 容器是否已登记、位置和状态是否有效、版本是否还是计划使用的版本 |
+| 系统 | `device_id`、`expected.devices`、`idempotency_key` | 设备状态、能力、权限、资源锁、安全条件、任务和系统版本 |
 
-用前一步结果更新后续步骤的预期版本时，要保留原计划、实际观察和重新检查的记录。发现版本冲突，不能直接改成当前版本就继续。
+编译/解释器可以先生成计划骨架，但不能凭空填写当前版本。`containers` 中只能引用已经登记的对象编号；`expected.devices` 和 `expected.objects` 必须来自执行前的新快照。占位文字不能提交给设备。
+
+## 执行顺序
+
+执行器按下面的顺序处理一份计划：
+
+1. **确认来源**：计划必须已经通过仿真；仿真输出只说明计划可继续检查，不代表设备已经执行。
+2. **读取当前信息**：调用等价的 `get_capabilities` 和 `get_snapshot`，取得设备当前支持的动作、系统版本、对象版本和可观察状态。
+3. **补齐运行时数据**：把已登记的容器编号和快照中的版本写入计划；为整份计划保存一个稳定的幂等键。
+4. **检查计划结构**：按照 `Plan v1` Schema 检查必填字段、字段类型、步骤编号和计划大小。结构检查通过只代表 JSON 可读取。
+5. **运行时校验**：调用等价的 `validate_plan`，核对动作、参数、对象、版本、权限、安全限制、资源冲突和现场前提。
+6. **提交一次**：校验通过后调用等价的 `submit_plan`。网络重试继续使用原幂等键，不生成另一份计划。
+7. **跟踪原任务**：保存返回的计划编号和任务编号，持续通过等价的 `get_plan`、`get_task` 和 `get_snapshot` 查询同一批记录。
+8. **核对完成证据**：只有每一步自己的完成条件都满足，执行器才把该步标为成功；随后更新对象和系统版本，再处理依赖它的下一步。
+9. **收口结果**：计划结束时保存对象变化、实际参数、设备观测、诊断、时间和版本。失败、取消或结果不明时也必须保留已经确认的部分结果。
+
+下面的伪代码只说明逻辑，不限定 HTTP 路径、MCP 工具名或具体编程语言：
+
+```python
+def execute(plan, simulation_result):
+    require_matching_passed_simulation(plan, simulation_result)
+
+    capabilities = get_capabilities(plan.device_ids)
+    snapshot = get_snapshot(plan.device_ids, plan.container_ids)
+    plan = reconcile_plan_with_snapshot(plan, snapshot)
+    # 状态或参数改变时重新验证，不能覆盖旧版本后直接继续
+
+    check_plan_v1_schema(plan)          # 只检查结构
+    validation = validate_plan(plan, capabilities, snapshot)
+    if not validation.passed:
+        return validation.failure
+
+    persist_plan_and_idempotency_key(plan)
+    receipt = submit_plan(plan)
+
+    while True:
+        plan_status = get_plan(receipt.plan_id)
+        tasks = query_known_tasks(plan_status)
+        snapshot = get_snapshot(plan.device_ids, plan.container_ids)
+        reconcile(tasks, snapshot)
+        if plan_status.is_terminal:
+            break
+        wait_for_event_or_poll_interval()
+
+    return get_plan(receipt.plan_id)
+```
+
+`submit_plan` 返回成功只说明中间件收到了计划。即使某一步已经 `accepted`，也不能写成 `completed`；连接正常、命令已发送或设备已经停机，也不一定满足该动作的完成条件。
+
+## 每一步怎样放行
+
+```mermaid
+flowchart TD
+    A[计划与仿真记录] --> B[当前能力与状态快照]
+    B --> C{运行时校验通过?}
+    C -->|否| D[诊断与重新确认]
+    C -->|是| E[幂等提交]
+    E --> F[查询原计划与任务]
+    F --> G{完成证据充分?}
+    G -->|是| H[保存实际结果]
+    G -->|尚在执行| F
+    G -->|失败或不明| I[保留部分结果并停止依赖步骤]
+```
+
+中间件执行到某一步时，至少按以下顺序检查：
+
+1. 该设备当前仍支持计划中的动作和参数；
+2. 对象版本与执行记录中的预期一致，对象位置和状态仍可用；
+3. 系统版本与执行记录中的预期一致，设备没有被其他任务占用；
+4. 操作契约要求的权限、安全限制和现场条件都有可追溯证据；
+5. 所需资源已锁定，而且不会与其他任务同时操作同一对象或设备；
+6. 通过转发器把操作、对象、系统三方面信息转换成设备仪器接口需要的命令；
+7. 保存原始回执，并按照动作契约继续读取完成证据。
+
+计划的 `expected` 建立提交时的版本基线。计划自身执行造成的版本变化，应根据已确认结果推进执行记录，并保留原始计划；后续步骤不能永远与起始版本比较，也不能接受无来源的外部版本变化。
+
+发现版本冲突时，不能把计划里的旧版本直接改成新版本后继续。执行器应停止受影响的步骤，保留冲突记录，并让上层根据新的现场状态重新确认或重新生成计划。
+
+## 设备步骤怎样排列
+
+当前执行计划采用“同一设备连续成段”的安排。属于同一台设备的步骤必须放在一起；计划切换到另一台设备后，不再返回前一台设备。
+
+```text
+清洗设备：设置 → 加注 → 查询
+    ↓ 由上层流程或人工完成样品转移
+超声设备：超声处理
+    ↓ 由上层流程或人工完成样品转移与配平
+离心设备：配置 → 关盖 → 启动 → 查询 → 开盖
+```
+
+设备之间的切换表示样品发生了物理转移，不表示两台设备之间存在直接调用关系。转移、装载、配平等动作如果没有自动设备提供，就由上层流程或人工完成并记录证据。
+
+需要多轮返回同一设备的工艺，例如“离心—清洗—再次离心”，当前实现应拆成多份计划，由上层流程依次编排。这样可以明确每次物理转移的责任和现场确认点。
+
+## 怎样判断完成
+
+完成条件由具体动作契约决定，不能用统一的“接口返回 200”代替。例如离心启动动作至少需要核对：
+
+- 本轮确实观察到转子开始转动；
+- 程序剩余时间已经归零；
+- 实际转速已经回到零；
+- 设备给出的程序完成和转子停止状态一致；
+- 对象、盖状态、配平等需要保留的证据仍能对应到本任务。
+
+如果只确认设备已经停机，却无法确认样品实际经历了要求的操作，结果应标为未知，而不是成功。请求参数也不能直接抄到“实际参数”中；只有设备回读或测量得到的值才能作为实际结果。
+
+## 仿真与真实执行的边界
+
+仿真器可以检查：
+
+- 动作是否存在，参数类型和范围是否正确；
+- 契约、设备协议编码和当前部署限制的已知交集；
+- 从步骤顺序能够推导出的设备局部状态；
+- 同一设备是否被拆成多个不连续的操作段。
+
+仿真器不能代替运行时确认：
+
+- 对象和系统版本是否仍为最新；
+- 设备是否在线、空闲，资源锁是否可取得；
+- 样品是否已经装载、管路是否就绪、离心管是否配平；
+- 真实设备是否执行，以及动作是否达到科学或物理完成条件。
+
+因此，仿真中的 `succeeded` 只表示该步骤通过了仿真能够执行的必检项。仿真留下的现场条件警告必须在 `validate_plan` 或步骤放行前由设备观测、登记数据或有来源的人工记录解决。
+
+## 重试、取消和结果不明
+
+- 首次提交前保存计划幂等键；相同计划重试必须复用原键。
+- 程序重启后先查询原计划和原任务，不能重新发送结果不明的动作。
+- 取消请求只表示请求取消；设备是否已经停止、能否安全中断，要读取任务和设备状态确认。
+- 机械动作不一定可逆。需要补救时，把补救作为新的操作，重新检查权限、条件、资源和幂等键。
+- 某一步只完成一部分时，保留已确认的对象变化和设备状态，不把整步伪装成完全失败或完全成功。
+- 计划超过 `max_duration_s` 后进入超时处理，但超时本身不能证明设备已经停止。
+
+最终结果必须能够回答四个问题：提交的是哪份计划、每一步实际执行到哪里、哪些对象和系统状态有证据、还有哪些结果未知。只有全部必需步骤达到各自完成条件，整份计划才能标为完成。

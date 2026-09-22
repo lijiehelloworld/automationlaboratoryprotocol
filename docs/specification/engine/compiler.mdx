@@ -1,117 +1,65 @@
 ---
-title: "编译/解释器"
-description: "说明如何把实验目标和设备接口整理成可验证的执行步骤。"
+title: "编译器"
+description: "把设备能力与实验目标整理成类型明确、依赖可追踪的程序。"
 ---
 
-编译/解释器读取科学目标、对象初始状态和 FSP 设备定义，将设备操作转换为类型化函数，并生成候选中间程序。它不直接调用物理设备。
+编译器处理两件事：先把设备资料整理为可以调用和检查的函数契约，再把实验目标整理为只使用这些函数的候选程序。生成模型可以建议步骤；可调用范围由审核后的能力注册表决定。
 
-## 输入
+## 能力编译
 
-```json
-{
-  "goal": {
-    "name": "向目标容器加入液体",
-    "success_criteria": [
-      "实际加液量为 0.5 mL",
-      "容器状态可确认"
-    ]
-  },
-  "initial_objects": [
-    {
-      "container_id": "container-01",
-      "object_type_id": "container.centrifuge_tube",
-      "container_status": "无盖",
-      "sample_status": "空",
-      "revision": "object-21"
-    },
-    {
-      "container_id": "source-01",
-      "object_type_id": "container.reservoir",
-      "sample_status": "液体",
-      "sample_volume_mL": 10,
-      "revision": "source-8"
-    }
-  ],
-  "fsp_definitions": [
-    {
-      "device_id": "device-01",
-      "revision": "12",
-      "operations": [
-        "add_liquid"
-      ],
-      "objects": [
-        "container.centrifuge_tube"
-      ],
-      "system_states": [
-        "idle",
-        "busy",
-        "fault"
-      ]
-    }
-  ]
-}
+每个函数必须绑定到明确的设备与动作版本，保留参数、单位、输入状态、必检条件、建议条件、状态效果、结果及错误说明。同名动作使用设备限定名区分，不能按名称猜测它们可以互换。
+
+能力编译输出三类内容：供生成器读取的函数说明、共享类型与注册表、供仿真器调用的检查和状态转换实现。函数说明中的占位函数体不代表驱动已经实现；文档齐全也不代表设备在线。
+
+参数有效范围取动作契约、协议编码和适用部署限制的交集。厂家范围未知时要记录缺失，不能把软件策略上限写成厂家验证上限。
+
+## 程序编译
+
+输入包括实验目标、成功条件、对象初态及能力版本。输出保留动作绑定、参数、对象引用、控制结构和证据依赖。
+
+```mermaid
+flowchart TD
+    A[目标与能力注册表] --> B[生成候选程序]
+    B --> C[解析语法树]
+    C --> D{入口与调用均合法?}
+    D -->|否| E[返回源码位置与原因]
+    D -->|是| F[检查类型 单位 对象依赖]
+    F --> G[保守简化]
+    G --> H[保存程序与定义版本]
+    H --> I[送入解释与仿真]
 ```
 
-## 处理过程
+准入检查限定入口、导入、可调用函数和允许的语法结构，拒绝动态调用、通配导入及未登记操作。AST 检查属于程序准入；运行模型生成的 Python 还需要独立进程、资源限制和隔离环境，不能将检查通过等同于执行沙箱。
 
-1. 校验操作是否完整定义对象要求、参数 Schema、执行前条件、系统安全限制和响应结构；
-2. 校验实验目标所需容器与操作兼容；
-3. 将参数类型、范围、枚举和状态变化编译为类型化函数契约；
-4. 组织带依赖关系的候选中间程序；
-5. 固定设备定义、对象状态和系统状态版本号。
+## 简化策略
 
-## 输出
+可以折叠纯常量表达式、删除确定不会执行的常量分支、去掉空语句。每次修改都要保留源码位置映射并重新检查、重新仿真。
 
-```json
-{
-  "program_id": "program-001",
-  "status": "compiled",
-  "definition_revisions": {
-    "device-01": "12"
-  },
-  "steps": [
-    {
-      "step_id": "step-1",
-      "device_id": "device-01",
-      "object": {
-        "containers": [
-          {
-            "container_id": "source-01",
-            "role": "source",
-            "expected_revision": "source-8"
-          },
-          {
-            "container_id": "container-01",
-            "role": "target",
-            "expected_revision": "object-21",
-            "before_state": {
-              "container_status": "无盖"
-            }
-          }
-        ]
-      },
-      "operation": {
-        "operation_id": "add_liquid",
-        "contract_version": "1",
-        "parameters": {
-          "source_container_id": "source-01",
-          "volume_mL": 0.5
-        }
-      },
-      "system": {
-        "expected_definition_revision": "12",
-        "expected_system_revision": "system-21",
-        "expected_device_state": "idle",
-        "execution_mode": "async"
-      }
-    }
-  ],
-  "diagnostics": []
-}
+默认保留设备调用顺序、次数、对象和参数。合并两次加液、删掉暂未使用的输出或重排操作都可能改变实验含义；只有动作契约明确允许且重新验证通过时，才能采用这些变换。诊断改写也必须有次数上限，不能一直生成直到偶然通过。
+
+以下可运行示例展示最小动作绑定检查，不是完整 Python 准入器：
+
+```python
+def bind_call(device_id, action, params, registry):
+    """按明确设备和动作查找契约，拒绝未声明参数。"""
+    key = (device_id, action)
+    if key not in registry:
+        raise ValueError("设备未登记该动作")
+    spec = registry[key]
+    missing = set(spec["required"]) - params.keys()
+    extra = params.keys() - set(spec["parameters"])
+    if missing or extra:
+        raise ValueError(f"缺少参数 {sorted(missing)}；多余参数 {sorted(extra)}")
+    return {"device_id": device_id, "action": action,
+            "params": dict(params), "contract_version": spec["version"]}
 ```
 
-编译/解释器必须拒绝未在 FSP 定义中声明的操作或参数。`compiled` 只表示结构通过，不表示已仿真或已执行。
+绑定后仍需根据契约检查类型、有限数值、单位、范围和跨字段条件。例如布尔值不能因为 Python 把它视为整数就通过整数参数检查。
 
-编译结果必须写明使用哪台设备、哪一版操作和设备定义，并记录步骤顺序、所需资源和完成条件。`implemented` 或 `ready` 的缓存值不能当成执行许可。
+## 从程序到执行计划
 
-中间步骤使用与请求相同的三部分格式。执行器创建执行任务时，再生成并保存幂等键；编译阶段不受理设备动作。
+程序中的对象及操作结构与执行后端的传输格式分开维护。输出 `Plan v1` 时，将动作映射到 `action/params`，对象映射到 `containers`，设备与对象预期版本映射到 `expected`。版本、完成条件和源码映射等审计资料应另行关联到计划，不能添加 Schema 不允许的字段。
+
+当前顺序转换只适用于已经解析为确定顺序、参数可序列化的程序段。遇到依赖未来测量的条件、循环或并行节点，应保留给上层解释器处理，或者报告后端不支持。静态遍历 `if` 的两个分支并收集其中调用，会改变程序含义。
+
+编译完成只表示得到可验证程序；进入执行前还要完成[仿真](/docs/specification/engine/simulator)和[运行时校验](/docs/specification/engine/executor)。
