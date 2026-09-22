@@ -108,7 +108,12 @@
     ]
   },
   "navbar": {
-    "links": []
+    "links": [
+      {
+        "label": "GitCode",
+        "href": "https://gitcode.com/mimedal/all"
+      }
+    ]
   },
   "footer": {
     "links": [
