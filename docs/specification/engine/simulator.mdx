@@ -3,7 +3,7 @@ title: "仿真器"
 description: "在隔离状态中先检查条件，再提交预测变化，把问题定位到具体步骤。"
 ---
 
-仿真器接收编译/解释器整理后的实验任务流程，以及语言引擎从 FSP 获取的能力、使用边界、约束和对象初态。它在独立状态副本中逐步计算预测变化并校验条件，把计算结果和问题反馈给 Agent，供下一轮修订使用。当前参考实现以规则和状态检查为主；只有明确提供模型的量才能计算，未建模的化学反应或设备动力学结果应标明未验证。
+仿真器接收编译/解释器整理后的实验任务流程，以及语言引擎从 FSP 获取的能力、使用边界、约束和对象初态。它在独立状态副本中逐步计算预测变化并校验条件，把计算结果和问题反馈给 Agent，供下一轮修订使用。
 
 ## 计算、校验与循环反馈
 
@@ -29,44 +29,18 @@ flowchart TD
     G -->|是| H[提交预测状态并记录步骤]
 ```
 
-以下可运行 Python 示例演示无损加液。体积可加和是示例假设，不代表真实测量：
+以下伪代码说明加液仿真的处理过程。示例采用无损转移、体积可加和的模型：
 
-```python
-from copy import deepcopy
-from math import isfinite
-
-def simulate_transfer(state, source, target, volume_ml):
-    """失败保留输入状态，成功返回新的预测状态。"""
-    errors = []
-    if source == target:
-        errors.append("来源和目标不能相同")
-    if source not in state or target not in state:
-        errors.append("对象未登记")
-    if (type(volume_ml) not in (int, float)
-            or not isfinite(volume_ml) or volume_ml <= 0):
-        errors.append("体积必须是有限正数，单位 mL")
-    if errors:
-        return state, errors
-    src, dst = state[source], state[target]
-    for obj in (src, dst):
-        for field in ("volume_ml", "capacity_ml"):
-            value = obj.get(field)
-            if type(value) not in (int, float) or not isfinite(value) or value < 0:
-                errors.append(f"{field} 未知或无效")
-    if errors:
-        return state, errors
-    if any(obj["volume_ml"] > obj["capacity_ml"] for obj in (src, dst)):
-        errors.append("初始体积超过容量")
-    if src["volume_ml"] < volume_ml:
-        errors.append("来源余量不足")
-    if dst["volume_ml"] + volume_ml > dst["capacity_ml"]:
-        errors.append("目标容量不足")
-    if errors:
-        return state, errors
-    predicted = deepcopy(state)
-    predicted[source]["volume_ml"] -= volume_ml
-    predicted[target]["volume_ml"] += volume_ml
-    return predicted, []
+```text
+读取来源和目标容器的预测状态
+检查两个容器已登记且不同，体积与容量数据有效
+检查加液量为有限正数，单位和范围符合动作契约
+检查来源余量、目标剩余容量及容器条件
+若任一检查失败：保留原状态，返回原因
+否则：
+  来源预测体积 = 原体积 - 加液量
+  目标预测体积 = 原体积 + 加液量
+  返回新的预测状态和检查记录
 ```
 
 实际动作还要检查容器类型、开闭状态、位置和设备专属条件。缺失规则必须列出。
@@ -100,10 +74,8 @@ def simulate_transfer(state, source, target, volume_ml):
 
 Agent 按诊断修订相关步骤，保留实验目的、成功条件与修改记录，再经过编译/解释检查和仿真。不得删除失败规则来获得通过结果。更换容器、改变剂量或删除步骤时，还要重新核对科学目标。
 
-## 当前模型覆盖范围
+## 仿真结果
 
-完整对象模型包含样品、数量、容器、位置、证据和来源。当前三设备生成物只推导部分设备局部状态，例如盖状态、托盘位置和配置值；没有完整容器状态链，不能据此声称已验证物料守恒或样品转移。
+仿真结果应列出使用的模型及适用范围、已检查条件、预测状态、错误、警告和待现场验证项。缺少模型或输入数据的项目应标为未验证；必检项目未验证时，不得判定仿真通过。
 
-当前生成物检查设备连续段：离开设备后不得在同一计划中回访。这属于当前计划编排约束，不是 ALL 控制流代数的普遍限制。
-
-输出同时列出已检查条件、预测状态、错误、警告和待现场验证项。无必检错误只说明已建模部分通过；`objects_current`、`system_current`、装载与配平等条件仍需现场确认。仿真记录关联具体程序和契约版本，程序或参数改变后原记录失效。
+设备当前状态、对象实际位置、装载和配平等现场条件，由执行器在下发前确认。仿真记录关联具体流程、参数、初始状态和契约版本；这些信息变化后，应重新验证受影响的步骤。
